@@ -72,6 +72,20 @@ def upload():
 
 #@app.route('/speech', methods=['POST'])
 #def text_to_speech():
+
+# Process Braille Image Added to display text
+recognized_text = ""
+try:
+    for letter in SegmentationEngine(image=img):
+        recognized_text += letter
+except Exception as e:
+    print(f"Segmentation error: {e}")
+    return "Error during segmentation."
+
+# Display the text
+print(f"Recognized Text: {recognized_text}")
+return render_template("index.html", recognized_text=recognized_text)
+
     
 
 if __name__ == "__main__":
