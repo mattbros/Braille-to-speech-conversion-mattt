@@ -72,7 +72,31 @@ def upload():
 
 #@app.route('/speech', methods=['POST'])
 #def text_to_speech():
-    
+
+from flask import Response
+
+@app.route('/webcam')
+def webcam():
+    def generate_frames():
+        cap = cv2.VideoCapture(0)  # 0 for default webcam
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+            # Preprocess the frame (resize, convert to grayscale, etc.)
+            processed_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            
+            # Save frame temporarily and send it for segmentation/recognition
+            temp_file = "temp_frame.png"
+            cv2.imwrite(temp_file, processed_frame)
+            yield b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + open(temp_file, 'rb').read() + b'\r\n'
+        
+        cap.release()
+        cv2.destroyAllWindows()
+
+    return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+
 
 if __name__ == "__main__":
     app.run()
