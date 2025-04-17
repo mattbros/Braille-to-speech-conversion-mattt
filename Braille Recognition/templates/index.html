@@ -277,6 +277,30 @@ function say(m , rate=1, pitch=0.8) {
     msg.lang = 'en-US';
     speechSynthesis.speak(msg);
  }
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Braille to Speech</title>
+</head>
+<body>
+    <h1>Braille to Speech Converter</h1>
+    <!-- Other functionalities -->
+
+    <!-- Button to access the webcam functionality -->
+    <a href="/webcam">
+        <button style="padding: 10px 20px; font-size: 16px;">Launch Webcam</button>
+    </a>
+</body>
+</html>
+
+//Add live webcam feed to flask server
+<iframe src="/webcam" width="640" height="480" style="border: none;"></iframe>
+
+
+	    
     </script>
 
     <!-- jQuery first, then Popper.js, then Bootstrap JS -->
