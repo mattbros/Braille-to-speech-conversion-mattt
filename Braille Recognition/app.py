@@ -2,9 +2,9 @@ import cv2
 import tempfile
 import os
 import uuid
-from flask import Flask,jsonify,render_template,send_file,redirect,request
+from flask import Flask, jsonify, render_template, send_file, redirect, request, Response
 from werkzeug.utils import secure_filename
-from OBR import SegmentationEngine,BrailleClassifier,BrailleImage
+from OBR import SegmentationEngine, BrailleClassifier, BrailleImage
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 tempdir = tempfile.TemporaryDirectory()
@@ -13,8 +13,7 @@ app = Flask("Optical Braille Recognition Demo")
 app.config['UPLOAD_FOLDER'] = tempdir.name
 
 def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route('/')
 def index():
@@ -30,96 +29,93 @@ def cover_image():
 
 @app.route('/procimage/<string:img_id>')
 def proc_image(img_id):
-    global tempdir
-    print(img_id)
-    image = '{}/{}-proc.png'.format(tempdir.name, secure_filename(img_id))
+    image = f"{tempdir.name}/{secure_filename(img_id)}-proc.png"
     if os.path.exists(image) and os.path.isfile(image):
         return send_file(image, mimetype='image/png')
     return redirect('/coverimage')
 
-
 @app.route('/digest', methods=['POST'])
 def upload():
-    # check if the post request has the file part
     if 'file' not in request.files:
-        return jsonify({"error" : True, "message" : "file not in request"})
+        return jsonify({"error": True, "message": "file not in request"})
     file = request.files['file']
-    # if user does not select file, browser also
-    # submit an empty part without filename
     if file.filename == '':
-        return jsonify({"error": True, "message" : "empty filename"})
+        return jsonify({"error": True, "message": "empty filename"})
     if file and allowed_file(file.filename):
         filename = ''.join(str(uuid.uuid4()).split('-'))
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-        global tempdir
-        
-        image_path = '{}/{}'.format(tempdir.name,filename)
+        image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(image_path)
+
         classifier = BrailleClassifier()
         img = BrailleImage(image_path)
         for letter in SegmentationEngine(image=img):
             letter.mark()
             classifier.push(letter)
-        cv2.imwrite('{}/{}-proc.png'.format(tempdir.name,filename), img.get_final_image())
+
+        processed_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{filename}-proc.png")
+        cv2.imwrite(processed_path, img.get_final_image())
         os.unlink(image_path)
 
-        r = {
-                "error": False,
-                "message": "Processed and Digested successfully",
-                "img_id" : filename,
-                "digest" : classifier.digest()
-        }
-        return jsonify(r)
-
-#@app.route('/speech', methods=['POST'])
-#def text_to_speech():
-
-from flask import Response
+        return jsonify({
+            "error": False,
+            "message": "Processed and Digested successfully",
+            "img_id": filename,
+            "digest": classifier.digest()
+        })
 
 @app.route('/webcam')
 def webcam():
+    return render_template("webcam.html")
+
+@app.route('/video_feed')
+def video_feed():
     def generate_frames():
-        cap = cv2.VideoCapture(0)  # 0 for default webcam
+        cap = cv2.VideoCapture(0)
         while True:
             ret, frame = cap.read()
             if not ret:
                 break
-            # Preprocess the frame (resize, convert to grayscale, etc.)
-            processed_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            
-            # Save frame temporarily and send it for segmentation/recognition
-            temp_file = "temp_frame.png"
-            cv2.imwrite(temp_file, processed_frame)
-            yield b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + open(temp_file, 'rb').read() + b'\r\n'
-        
+            _, buffer = cv2.imencode('.jpg', frame)
+            frame = buffer.tobytes()
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
         cap.release()
-        cv2.destroyAllWindows()
-
     return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
-
 
 @app.route('/capture', methods=['GET'])
 def capture():
-    import cv2
     cap = cv2.VideoCapture(0)
     ret, frame = cap.read()
+    cap.release()
+
     if ret:
-        filename = 'captured_braille.jpg'
-        cv2.imwrite(filename, frame)
-        cap.release()
-        return jsonify({'status': 'success', 'filename': filename})
+        filename = ''.join(str(uuid.uuid4()).split('-')) + ".jpg"
+        image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        cv2.imwrite(image_path, frame)
+
+        classifier = BrailleClassifier()
+        img = BrailleImage(image_path)
+        for letter in SegmentationEngine(image=img):
+            letter.mark()
+            classifier.push(letter)
+
+        proc_img_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{filename}-proc.png")
+        cv2.imwrite(proc_img_path, img.get_final_image())
+        os.unlink(image_path)
+
+        return jsonify({
+            "error": False,
+            "message": "Captured and processed",
+            "img_id": filename,
+            "digest": classifier.digest()
+        })
     else:
-        cap.release()
-        return jsonify({'status': 'error'})
-
+        return jsonify({"error": True, "message": "Webcam capture failed"})
 
 if __name__ == "__main__":
-    app.run(debug=True)
-
-
-
-if __name__ == "__main__":
-    app.run()
-    tempdir.cleanup()
-
+    try:
+        app.run(debug=True)
+    finally:
+        tempdir.cleanup()
 
 
