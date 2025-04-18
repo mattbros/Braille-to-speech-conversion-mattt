@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Webcam Feed</title>
+</head>
+<body style="text-align:center; background-color: #f8f9fa;">
+  <h2>Live Webcam Feed</h2>
+  <img src="{{ url_for('video_feed') }}" width="640" height="480" style="border:2px solid #000;">
+  <br><br>
+  <a href="/" style="text-decoration:none;">
+    <button style="padding: 10px 20px; font-size: 16px;">Back to Home</button>
+  </a>
+</body>
+</html>
