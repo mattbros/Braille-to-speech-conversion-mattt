@@ -46,25 +46,17 @@
       <button type="button" id="cancel_btn" class="btn btn-secondary d-none">Cancel upload</button>
 
       <br><br>
-      <button class="btn btn-dark" id='play123'>Play</button>
+      <button class="btn btn-dark" id="play123">Play</button>
     </div>
 
     <br><br><br>
 
-    <!-- Webcam Launch Button -->
-<div align="center" style="margin-top: 20px;">
-  <a href="/webcam">
-    <button class="btn btn-success" style="padding: 10px 20px; font-size: 16px;">Launch Webcam</button>
-  </a>
-</div>
-
-<!-- Add Webcam Button Below -->
-<div class="text-center mt-4">
-  <a href="/webcam" target="_blank">
-    <button class="btn btn-success">Launch Webcam</button>
-  </a>
-</div>
-
+    <!-- Webcam Launch Button (Clean) -->
+    <div align="center" style="margin-top: 20px;">
+      <a href="/webcam">
+        <button class="btn btn-success" style="padding: 10px 20px; font-size: 16px;">Launch Webcam</button>
+      </a>
+    </div>
 
     <footer>
       <div align="center" style="position: fixed;left: 0;bottom: 0;width: 100%; background-color: #ffffff; color: #000000">
@@ -75,10 +67,6 @@
   </div>
 
   <script>
-    function openUrl(url) {
-      window.open(url, '_blank');
-    }
-
     var progress = document.getElementById("progress");
     var progress_wrapper = document.getElementById("progress_wrapper");
     var progress_status = document.getElementById("progress_status");
@@ -100,12 +88,12 @@
           <button type="button" class="close" data-dismiss="alert" aria-label="Close">
             <span aria-hidden="true">&times;</span>
           </button>
-        </div>`
+        </div>`;
     }
 
     function upload(url) {
       if (!input.value) {
-        show_alert("No file selected", "warning")
+        show_alert("No file selected", "warning");
         return;
       }
 
@@ -118,6 +106,7 @@
       loading_btn.classList.remove("d-none");
       cancel_btn.classList.remove("d-none");
       progress_wrapper.classList.remove("d-none");
+
       var file = input.files[0];
       var filename = file.name;
       var filesize = file.size;
@@ -126,11 +115,11 @@
 
       request.upload.addEventListener("progress", function (e) {
         var loaded = e.loaded;
-        var total = e.total
+        var total = e.total;
         var percent_complete = (loaded / total) * 100;
         progress.setAttribute("style", `width: ${Math.floor(percent_complete)}%`);
         progress_status.innerText = `${Math.floor(percent_complete)}% uploaded`;
-      })
+      });
 
       request.addEventListener("load", function (e) {
         if (request.status == 200) {
@@ -162,7 +151,7 @@
 
       cancel_btn.addEventListener("click", function () {
         request.abort();
-      })
+      });
     }
 
     function input_filename() {
@@ -202,9 +191,4 @@
   <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"></script>
   <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"></script>
 </body>
-</html>
-
-    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"></script>
-  </body>
 </html>
