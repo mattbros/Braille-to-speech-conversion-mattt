@@ -2,26 +2,43 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Webcam</title>
+    <title>Live Braille Recognition</title>
 </head>
 <body>
-    <h2 style="text-align: center;">Live Webcam Feed</h2>
-    <div style="text-align: center;">
-        <!-- Live video stream from Flask -->
-        <img src="{{ url_for('video_feed') }}" width="640" height="480" style="border: 2px solid black;">
-        
-        <br><br>
+    <h2 style="text-align: center;">Live Braille Webcam</h2>
 
-        <!-- Button to capture image -->
-        <form action="/capture" method="POST">
-            <button type="submit" style="padding: 10px 20px; font-size: 16px;">Capture Image</button>
-        </form>
+    <div style="text-align: center;">
+        <!-- Live webcam feed -->
+        <img src="{{ url_for('video_feed') }}" width="640" height="480" style="border: 2px solid black;"><br><br>
+
+        <!-- Capture Image Button -->
+        <button onclick="captureImage()" style="padding: 10px 20px; font-size: 16px;">Capture Image</button>
+
+        <!-- Result Display -->
+        <p id="captureStatus" style="margin-top: 20px; font-weight: bold;"></p>
+        <p id="brailleOutput" style="color: green;"></p>
 
         <br>
-
-        <!-- Back to main page -->
-        <a href="/" style="display: inline-block; margin-top: 20px;">Back to Home</a>
+        <a href="/">Back to Home</a>
     </div>
+
+    <script>
+        function captureImage() {
+            fetch('/capture')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('captureStatus').textContent = data.message;
+                    if (!data.error) {
+                        document.getElementById('brailleOutput').textContent = "Detected Text: " + data.digest;
+                    } else {
+                        document.getElementById('brailleOutput').textContent = "Error during capture.";
+                    }
+                })
+                .catch(err => {
+                    document.getElementById('captureStatus').textContent = "Capture failed.";
+                    console.error(err);
+                });
+        }
+    </script>
 </body>
 </html>
-
