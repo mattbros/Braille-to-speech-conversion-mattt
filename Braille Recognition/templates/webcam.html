@@ -1,15 +1,58 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Webcam Feed</title>
+  <title>Webcam Capture</title>
 </head>
-<body style="text-align:center; background-color: #f8f9fa;">
-  <h2>Live Webcam Feed</h2>
-  <img src="{{ url_for('video_feed') }}" width="640" height="480" style="border:2px solid #000;">
+<body>
+  <h1>Live Webcam Feed</h1>
+  <video id="webcam" autoplay playsinline width="640" height="480"></video>
+  <br>
+  <button id="captureBtn">Capture Braille</button>
+  <canvas id="canvas" width="640" height="480" style="display: none;"></canvas>
   <br><br>
-  <a href="/" style="text-decoration:none;">
-    <button style="padding: 10px 20px; font-size: 16px;">Back to Home</button>
-  </a>
+  <kbd id="output">Output will appear here...</kbd>
+
+  <script>
+    const video = document.getElementById('webcam');
+    const canvas = document.getElementById('canvas');
+    const captureBtn = document.getElementById('captureBtn');
+    const output = document.getElementById('output');
+
+    // Start the webcam stream
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => {
+        video.srcObject = stream;
+      })
+      .catch(err => console.error("Error accessing webcam: ", err));
+
+    captureBtn.addEventListener('click', () => {
+      const context = canvas.getContext('2d');
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob(blob => {
+        const formData = new FormData();
+        formData.append('file', blob, 'capture.png');
+
+        fetch('/digest', {
+          method: 'POST',
+          body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.error) {
+            output.textContent = "Error: " + data.message;
+          } else {
+            output.textContent = data.digest;
+            const msg = new SpeechSynthesisUtterance(data.digest);
+            speechSynthesis.speak(msg);
+          }
+        })
+        .catch(err => {
+          output.textContent = "Error sending image.";
+          console.error(err);
+        });
+      }, 'image/png');
+    });
+  </script>
 </body>
 </html>
