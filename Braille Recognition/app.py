@@ -96,6 +96,22 @@ def webcam():
 
     return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
+
+@app.route('/capture', methods=['GET'])
+def capture():
+    import cv2
+    cap = cv2.VideoCapture(0)
+    ret, frame = cap.read()
+    if ret:
+        filename = 'captured_braille.jpg'
+        cv2.imwrite(filename, frame)
+        cap.release()
+        return jsonify({'status': 'success', 'filename': filename})
+    else:
+        cap.release()
+        return jsonify({'status': 'error'})
+
+
 if __name__ == "__main__":
     app.run(debug=True)
 
