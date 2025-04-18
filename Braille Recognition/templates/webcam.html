@@ -1,58 +1,27 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Webcam Capture</title>
+    <meta charset="UTF-8">
+    <title>Webcam</title>
 </head>
 <body>
-  <h1>Live Webcam Feed</h1>
-  <video id="webcam" autoplay playsinline width="640" height="480"></video>
-  <br>
-  <button id="captureBtn">Capture Braille</button>
-  <canvas id="canvas" width="640" height="480" style="display: none;"></canvas>
-  <br><br>
-  <kbd id="output">Output will appear here...</kbd>
+    <h2 style="text-align: center;">Live Webcam Feed</h2>
+    <div style="text-align: center;">
+        <!-- Live video stream from Flask -->
+        <img src="{{ url_for('video_feed') }}" width="640" height="480" style="border: 2px solid black;">
+        
+        <br><br>
 
-  <script>
-    const video = document.getElementById('webcam');
-    const canvas = document.getElementById('canvas');
-    const captureBtn = document.getElementById('captureBtn');
-    const output = document.getElementById('output');
+        <!-- Button to capture image -->
+        <form action="/capture" method="POST">
+            <button type="submit" style="padding: 10px 20px; font-size: 16px;">Capture Image</button>
+        </form>
 
-    // Start the webcam stream
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(stream => {
-        video.srcObject = stream;
-      })
-      .catch(err => console.error("Error accessing webcam: ", err));
+        <br>
 
-    captureBtn.addEventListener('click', () => {
-      const context = canvas.getContext('2d');
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
-      canvas.toBlob(blob => {
-        const formData = new FormData();
-        formData.append('file', blob, 'capture.png');
-
-        fetch('/digest', {
-          method: 'POST',
-          body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-          if (data.error) {
-            output.textContent = "Error: " + data.message;
-          } else {
-            output.textContent = data.digest;
-            const msg = new SpeechSynthesisUtterance(data.digest);
-            speechSynthesis.speak(msg);
-          }
-        })
-        .catch(err => {
-          output.textContent = "Error sending image.";
-          console.error(err);
-        });
-      }, 'image/png');
-    });
-  </script>
+        <!-- Back to main page -->
+        <a href="/" style="display: inline-block; margin-top: 20px;">Back to Home</a>
+    </div>
 </body>
 </html>
+
