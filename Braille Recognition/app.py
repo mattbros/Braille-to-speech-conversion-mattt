@@ -86,7 +86,7 @@ def video_feed():
     return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
-@app.route('/capture', methods=['GET'])
+@app.route('/capture', methods=['POST'])  # changed from GET to POST
 def capture():
     cap = cv2.VideoCapture(0)
     ret, frame = cap.read()
@@ -115,6 +115,7 @@ def capture():
         })
     else:
         return jsonify({"error": True, "message": "Webcam capture failed"})
+
 
 if __name__ == "__main__":
     try:
