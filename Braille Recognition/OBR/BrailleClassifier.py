@@ -62,17 +62,24 @@ def get_combination(box, dots, diameter):
         start = (left, midpointY)
         width = int(right - left)
 
-        corners = { (left,top): 1, (right,top): 4, (left, bottom): 3, (right,bottom): 6,
-                (left): 2, (right): 5}
+corners = {
+    (left, top): 1,
+    (left, top + midpointY): 2,
+    (left, bottom): 3,
+    (right, top): 4,
+    (right, top + midpointY): 5,
+    (right, bottom): 6
+}
 
-        for corner in corners:
-            if corner != left and corner != right:
-                D = get_dot_nearest(dots, int(diameter), corner)
-            else:
-                if corner == left:
-                    D = get_left_nearest(dots, int(diameter), left)
-                else:
-                    D = get_right_nearest(dots, int(diameter), right)
+
+for corner, pos in corners.items():
+    D = get_dot_nearest(dots, int(diameter), corner)
+    if D is not None:
+        dots.remove(D)
+        result[pos - 1] = 1
+    if len(dots) == 0:
+        break
+
 
             if D is not None:
                 dots.remove(D)
