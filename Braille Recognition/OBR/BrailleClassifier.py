@@ -81,6 +81,7 @@ for corner, pos in corners.items():
         break
 
 
+
             if D is not None:
                 dots.remove(D)
                 result[corners[corner]-1] = 1
