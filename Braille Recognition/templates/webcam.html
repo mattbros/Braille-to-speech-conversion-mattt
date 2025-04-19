@@ -22,28 +22,43 @@
         <a href="/" style="display: inline-block; margin-top: 20px;">Back to Home</a>
     </div>
 
-    <script>
-      document.getElementById('livefeed').onerror = function () {
-        console.error("Failed to load webcam feed from /video_feed");
-        alert("Unable to load webcam feed. Make sure your webcam is connected and not being used by another app.");
-      };
+<script>
+  document.getElementById('livefeed').onerror = function () {
+    console.error("Failed to load webcam feed from /video_feed");
+    alert("Unable to load webcam feed. Make sure your webcam is connected and not being used by another app.");
+  };
 
-      document.getElementById('captureBtn').onclick = function () {
-        fetch('/capture', { method: 'POST' })
-          .then(res => res.json())
-          .then(data => {
-            if (data.error) {
-              alert("Error: " + data.message);
-            } else {
-              const output = document.getElementById('result');
-              output.innerHTML = `
-                <p><strong>Output:</strong> ${data.digest}</p>
-                <img src="/procimage/${data.img_id}" width="320" style="margin-top: 10px; border: 1px solid black;">
-              `;
-            }
-          })
-          .catch(err => alert("Failed to capture image: " + err));
-      };
-    </script>
+  document.getElementById('captureBtn').onclick = function () {
+    fetch('/capture', { method: 'POST' })
+      .then(res => res.json())
+      .then(data => {
+        const output = document.getElementById('result');
+        if (data.error) {
+          alert("Error: " + data.message);
+          output.innerHTML = `<p style="color:red;">Capture failed</p>`;
+        } else {
+          output.innerHTML = `
+            <p><strong>Output:</strong> ${data.digest}</p>
+            <img src="/procimage/${data.img_id}" width="320" style="margin-top: 10px; border: 1px solid black;">
+          `;
+          say(data.digest);
+        }
+      })
+      .catch(err => {
+        alert("Failed to capture image: " + err);
+      });
+  };
+
+  function say(text, rate = 1, pitch = 0.8) {
+    const msg = new SpeechSynthesisUtterance();
+    msg.text = text;
+    msg.lang = 'en-US';
+    msg.volume = 1;
+    msg.rate = rate;
+    msg.pitch = pitch;
+    speechSynthesis.speak(msg);
+  }
+</script>
+
 </body>
 </html>
