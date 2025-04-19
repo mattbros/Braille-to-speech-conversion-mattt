@@ -54,40 +54,48 @@ def get_dot_nearest(dots, diameter, pt1):
 
 
 def get_combination(box, dots, diameter):
+        import cv2
+
         result = [0, 0, 0, 0, 0, 0]
         left, right, top, bottom = box
 
-        midpointY = top + int((bottom - top) / 2)
+        midpointY = int((bottom - top) / 2)
         end = (right, midpointY)
         start = (left, midpointY)
         width = int(right - left)
 
         corners = {
                 (left, top): 1,
-                (left, midpointY): 2,
+                (left, top + midpointY): 2,
                 (left, bottom): 3,
                 (right, top): 4,
-                (right, midpointY): 5,
+                (right, top + midpointY): 5,
                 (right, bottom): 6
         }
 
+        # Optional: Create a copy of the image if needed for drawing
+        # This requires you to pass in the image too (if not already part of your object)
+
         for corner, pos in corners.items():
-            print(f"👉 Checking corner: {corner}, assigned pos {pos}")
-            D = get_dot_nearest(dots, int(diameter), corner)
+                # 🟥 Draw a red dot on each corner being checked
+                cv2.circle(global_img_debug, corner, 6, (0, 0, 255), -1)
+
+                print(f"👉 Checking corner: {corner}, assigned pos {pos}")
+                D = get_dot_nearest(dots, int(diameter), corner)
                 if D is not None:
                         print(f"✅ Found dot near {corner}: {D}")
                         dots.remove(D)
                         result[pos - 1] = 1
-                 if len(dots) == 0:
+                else:
+                        print(f"❌ No dot near {corner}")
+                if len(dots) == 0:
+                        print("🚫 No more dots left to match.")
                         break
 
-
         print("🧪 Final result array (dot combo):", result, "| Types:", [type(v) for v in result])
-        print(f"👉 Checking corner: {corner}, assigned pos {pos}")
-        if D is not None:
-            print(f"✅ Found dot near {corner}: {D}")
-
         return end, start, width, tuple(result)
+
+
 
 
 
