@@ -80,6 +80,10 @@ def get_combination(box, dots, diameter):
                         break
 
         print("🧪 Final result array (dot combo):", result, "| Types:", [type(v) for v in result])
+        print(f"👉 Checking corner: {corner}, assigned pos {pos}")
+        if D is not None:
+            print(f"✅ Found dot near {corner}: {D}")
+
         return end, start, width, tuple(result)
 
 
