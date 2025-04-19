@@ -55,6 +55,10 @@ def get_dot_nearest(dots, diameter, pt1):
 
 def get_combination(box, dots, diameter):
         import cv2
+        try:
+                from app import global_img_debug
+        except:
+                global_img_debug = None
 
         result = [0, 0, 0, 0, 0, 0]
         left, right, top, bottom = box
@@ -73,21 +77,20 @@ def get_combination(box, dots, diameter):
                 (right, bottom): 6
         }
 
-        # Optional: Create a copy of the image if needed for drawing
-        # This requires you to pass in the image too (if not already part of your object)
-
         for corner, pos in corners.items():
-                # 🟥 Draw a red dot on each corner being checked
-                cv2.circle(global_img_debug, corner, 6, (0, 0, 255), -1)
-
                 print(f"👉 Checking corner: {corner}, assigned pos {pos}")
                 D = get_dot_nearest(dots, int(diameter), corner)
                 if D is not None:
                         print(f"✅ Found dot near {corner}: {D}")
                         dots.remove(D)
                         result[pos - 1] = 1
+
+                        # 🔴 Draw debug dot
+                        if global_img_debug is not None:
+                                cv2.circle(global_img_debug, corner, 6, (0, 0, 255), -1)
                 else:
                         print(f"❌ No dot near {corner}")
+
                 if len(dots) == 0:
                         print("🚫 No more dots left to match.")
                         break
