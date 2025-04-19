@@ -49,17 +49,15 @@ def upload():
         classifier = BrailleClassifier()
         img = BrailleImage(image_path)
 
-for letter in SegmentationEngine(image=img):
-    print("Character bounding box:", letter.get_bounding_box())
-    print("Dots in this box:", letter.get_dot_coordinates())
-    letter.mark()
-    classifier.push(letter)
+        for letter in SegmentationEngine(image=img):
+            print("Character bounding box:", letter.get_bounding_box())
+            print("Dots in this box:", letter.get_dot_coordinates())
+            letter.mark()
+            classifier.push(letter)
 
-
-# These should NOT be indented inside the loop
-processed_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{filename}-proc.png")
-cv2.imwrite(processed_path, img.get_final_image())
-os.unlink(image_path)
+        processed_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{filename}-proc.png")
+        cv2.imwrite(processed_path, img.get_final_image())
+        os.unlink(image_path)
 
         print("Full Digest:", classifier.digest())
 
@@ -69,6 +67,7 @@ os.unlink(image_path)
             "img_id": filename,
             "digest": classifier.digest()
         })
+
 
 
 @app.route('/webcam')
