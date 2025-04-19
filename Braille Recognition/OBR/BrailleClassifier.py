@@ -54,15 +54,15 @@ def get_dot_nearest(dots, diameter, pt1):
 
 
 def get_combination(box, dots, diameter):
-    result = [0,0,0,0,0,0]
+    result = [0, 0, 0, 0, 0, 0]
     left, right, top, bottom = box
 
-    midpointY = int((bottom - top)/2)
+    midpointY = int((bottom - top) / 2)
     end = (right, midpointY)
     start = (left, midpointY)
     width = int(right - left)
 
-    # Correctly define all 6 dot positions
+    # Correct Braille 6-dot position map
     corners = {
         (left, top): 1,
         (left, top + midpointY): 2,
@@ -81,6 +81,7 @@ def get_combination(box, dots, diameter):
             break
 
     return end, start, width, tuple(result)
+
 
 
 
