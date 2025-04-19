@@ -56,9 +56,10 @@ for letter in SegmentationEngine(image=img):
     classifier.push(letter)
 
 
-        processed_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{filename}-proc.png")
-        cv2.imwrite(processed_path, img.get_final_image())
-        os.unlink(image_path)
+# These should NOT be indented inside the loop
+processed_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{filename}-proc.png")
+cv2.imwrite(processed_path, img.get_final_image())
+os.unlink(image_path)
 
         print("Full Digest:", classifier.digest())
 
