@@ -62,7 +62,6 @@ def get_combination(box, dots, diameter):
     start = (left, midpointY)
     width = int(right - left)
 
-    # Correct Braille 6-dot position map
     corners = {
         (left, top): 1,
         (left, top + midpointY): 2,
@@ -82,13 +81,6 @@ def get_combination(box, dots, diameter):
 
     return end, start, width, tuple(result)
 
-
-
-
-
-            if len(dots) == 0:
-                break
-        return end,start,width,tuple(result);
 
 def translate_to_number(value):
     if value == 'a':
