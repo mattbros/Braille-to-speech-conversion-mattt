@@ -6,6 +6,9 @@ from flask import Flask, jsonify, render_template, send_file, redirect, request,
 from werkzeug.utils import secure_filename
 from OBR import SegmentationEngine, BrailleClassifier, BrailleImage
 
+global_img_debug = None  # for drawing corner debug circles
+
+
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 tempdir = tempfile.TemporaryDirectory()
 
