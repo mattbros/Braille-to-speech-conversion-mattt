@@ -54,37 +54,36 @@ def get_dot_nearest(dots, diameter, pt1):
 
 
 def get_combination(box, dots, diameter):
-        result = [0,0,0,0,0,0]
-        left,right,top,bottom = box
+    result = [0,0,0,0,0,0]
+    left, right, top, bottom = box
 
-        midpointY = int((bottom - top)/2)
-        end = (right, midpointY)
-        start = (left, midpointY)
-        width = int(right - left)
+    midpointY = int((bottom - top)/2)
+    end = (right, midpointY)
+    start = (left, midpointY)
+    width = int(right - left)
 
-corners = {
-    (left, top): 1,
-    (left, top + midpointY): 2,
-    (left, bottom): 3,
-    (right, top): 4,
-    (right, top + midpointY): 5,
-    (right, bottom): 6
-}
+    # Correctly define all 6 dot positions
+    corners = {
+        (left, top): 1,
+        (left, top + midpointY): 2,
+        (left, bottom): 3,
+        (right, top): 4,
+        (right, top + midpointY): 5,
+        (right, bottom): 6
+    }
+
+    for corner, pos in corners.items():
+        D = get_dot_nearest(dots, int(diameter), corner)
+        if D is not None:
+            dots.remove(D)
+            result[pos - 1] = 1
+        if len(dots) == 0:
+            break
+
+    return end, start, width, tuple(result)
 
 
-for corner, pos in corners.items():
-    D = get_dot_nearest(dots, int(diameter), corner)
-    if D is not None:
-        dots.remove(D)
-        result[pos - 1] = 1
-    if len(dots) == 0:
-        break
 
-
-
-            if D is not None:
-                dots.remove(D)
-                result[corners[corner]-1] = 1
 
             if len(dots) == 0:
                 break
