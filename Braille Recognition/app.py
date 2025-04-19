@@ -49,12 +49,12 @@ def upload():
         image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(image_path)
 
+        global global_img_debug
+
         classifier = BrailleClassifier()
         img = BrailleImage(image_path)
-
-        # 🔍 Set global debug image
-        global global_img_debug
         global_img_debug = img.get_final_image()
+
 
         global global_img_debug
         global_img_debug = img.get_original_image().copy()
@@ -116,12 +116,12 @@ def capture():
         image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         cv2.imwrite(image_path, frame)
 
+        global global_img_debug
+
         classifier = BrailleClassifier()
         img = BrailleImage(image_path)
-
-        # 🔍 Set global debug image
-        global global_img_debug
         global_img_debug = img.get_final_image()
+
 
 
 
