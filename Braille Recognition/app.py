@@ -48,14 +48,17 @@ def upload():
 
         classifier = BrailleClassifier()
         img = BrailleImage(image_path)
+
         for letter in SegmentationEngine(image=img):
-            print(f"Segmented letter at position (top={letter.get_top()}, left={letter.get_left()})")
             letter.mark()
+            print(f"Segmented letter at position (top={letter.get_top()}, left={letter.get_left()})")
             classifier.push(letter)
 
         processed_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{filename}-proc.png")
         cv2.imwrite(processed_path, img.get_final_image())
         os.unlink(image_path)
+
+        print("Full Digest:", classifier.digest())
 
         return jsonify({
             "error": False,
@@ -63,6 +66,7 @@ def upload():
             "img_id": filename,
             "digest": classifier.digest()
         })
+
 
 @app.route('/webcam')
 def webcam():
