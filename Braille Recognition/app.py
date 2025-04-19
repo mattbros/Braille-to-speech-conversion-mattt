@@ -129,6 +129,96 @@ def capture():
         return jsonify({"error": True, "message": "Webcam capture failed"})
 
 
+import numpy as np
+
+class FakeBrailleCharacter:
+    def __init__(self, bounding_box, dot_coords, dot_diameter):
+        self._bbox = bounding_box
+        self._dots = dot_coords
+        self._diameter = dot_diameter
+
+    def get_bounding_box(self):
+        return self._bbox
+
+    def get_dot_coordinates(self):
+        return self._dots
+
+    def get_dot_diameter(self):
+        return self._diameter
+
+    def is_valid(self):
+        return True
+
+    def mark(self):
+        pass
+
+def custom_segmentation(image):
+    print("⚙️ Running custom segmentation...")
+
+    img = image.get_original_image()
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(gray, (5,5), 0)
+    _, thresh = cv2.threshold(blur, 100, 255, cv2.THRESH_BINARY_INV)
+
+    # Detect blobs (Braille dots)
+    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    dots = []
+
+    for cnt in contours:
+        (x, y), radius = cv2.minEnclosingCircle(cnt)
+        if 3 <= radius <= 20:
+            dots.append(((int(x), int(y)), int(radius)))
+
+    print(f"🟣 Total detected dots: {len(dots)}")
+
+    # Group dots by Y into lines
+    dots = sorted(dots, key=lambda d: (d[0][1], d[0][0]))  # sort by y, then x
+    line_threshold = 40  # pixel height to separate lines
+    lines = []
+    current_line = []
+
+    for dot in dots:
+        if not current_line or abs(dot[0][1] - current_line[-1][0][1]) < line_threshold:
+            current_line.append(dot)
+        else:
+            lines.append(current_line)
+            current_line = [dot]
+    if current_line:
+        lines.append(current_line)
+
+    print(f"📏 Lines detected: {len(lines)}")
+
+    characters = []
+    dot_diameter = np.mean([d[1]*2 for d in dots]) if dots else 10
+
+    for line_num, line in enumerate(lines):
+        line = sorted(line, key=lambda d: d[0][0])  # sort by x
+        i = 0
+        while i + 1 < len(line):
+            group = line[i:i+2]
+            # Try to form a full 6-dot character by looking vertically
+            x_coords = [p[0][0] for p in group]
+            y_top = min(p[0][1] for p in group) - int(dot_diameter)
+            y_bot = max(p[0][1] for p in group) + int(dot_diameter)
+            x_left = min(x_coords) - int(dot_diameter)
+            x_right = max(x_coords) + int(dot_diameter)
+
+            box = (x_left, x_right, y_top, y_bot)
+
+            cell_dots = []
+            for d in dots:
+                dx, dy = d[0]
+                if x_left <= dx <= x_right and y_top <= dy <= y_bot:
+                    cell_dots.append(d)
+
+            if len(cell_dots) >= 1:
+                print(f"📦 Grouping {len(cell_dots)} dots into one character at {box}")
+                characters.append(FakeBrailleCharacter(box, cell_dots, dot_diameter))
+
+            i += 2  # move to next character group
+
+    print(f"✅ Total Braille cells formed: {len(characters)}\n")
+    return characters
 
 
 if __name__ == "__main__":
