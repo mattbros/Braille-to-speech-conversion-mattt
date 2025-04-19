@@ -51,6 +51,11 @@ def upload():
 
         classifier = BrailleClassifier()
         img = BrailleImage(image_path)
+
+        # 🔍 Set global debug image
+        global global_img_debug
+        global_img_debug = img.get_final_image()
+
         global global_img_debug
         global_img_debug = img.get_original_image().copy()
 
@@ -113,6 +118,11 @@ def capture():
 
         classifier = BrailleClassifier()
         img = BrailleImage(image_path)
+
+        # 🔍 Set global debug image
+        global global_img_debug
+        global_img_debug = img.get_final_image()
+
 
 
         for letter in custom_segmentation(img):
