@@ -86,7 +86,7 @@ def video_feed():
     return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
-@app.route('/capture', methods=['POST'])  # changed from GET to POST
+@app.route('/capture', methods=['POST'])
 def capture():
     cap = cv2.VideoCapture(0)
     ret, frame = cap.read()
@@ -99,9 +99,15 @@ def capture():
 
         classifier = BrailleClassifier()
         img = BrailleImage(image_path)
+
         for letter in SegmentationEngine(image=img):
             letter.mark()
+            # 🔍 Add debug: show the raw dot info
+            print(f"Segmented letter dots: {letter.get_dots()}")
             classifier.push(letter)
+
+        # 🔍 Show final decoded string
+        print("Full Digest:", classifier.digest())
 
         proc_img_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{filename}-proc.png")
         cv2.imwrite(proc_img_path, img.get_final_image())
@@ -115,6 +121,7 @@ def capture():
         })
     else:
         return jsonify({"error": True, "message": "Webcam capture failed"})
+
 
 
 if __name__ == "__main__":
