@@ -5,9 +5,10 @@ import uuid
 from flask import Flask, jsonify, render_template, send_file, redirect, request, Response
 from werkzeug.utils import secure_filename
 from OBR import SegmentationEngine, BrailleClassifier, BrailleImage
+import numpy as np
 
-global_img_debug = None  # for drawing corner debug circles
-
+# For drawing corner debug circles
+global_img_debug = None
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 tempdir = tempfile.TemporaryDirectory()
@@ -39,6 +40,8 @@ def proc_image(img_id):
 
 @app.route('/digest', methods=['POST'])
 def upload():
+    global global_img_debug
+
     if 'file' not in request.files:
         return jsonify({"error": True, "message": "file not in request"})
     file = request.files['file']
@@ -49,23 +52,15 @@ def upload():
         image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(image_path)
 
-        global global_img_debug
-
         classifier = BrailleClassifier()
         img = BrailleImage(image_path)
-        global_img_debug = img.get_final_image()
-
-
-        global global_img_debug
         global_img_debug = img.get_original_image().copy()
-
 
         for letter in custom_segmentation(img):
             print("Character bounding box:", letter.get_bounding_box())
             print("Dots in this box:", letter.get_dot_coordinates())
             letter.mark()
             classifier.push(letter)
-
 
         processed_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{filename}-proc.png")
         cv2.imwrite(processed_path, img.get_final_image())
@@ -80,12 +75,9 @@ def upload():
             "digest": classifier.digest()
         })
 
-
-
 @app.route('/webcam')
 def webcam():
     return render_template("webcam.html")
-
 
 @app.route('/video_feed')
 def video_feed():
@@ -104,9 +96,10 @@ def video_feed():
 
     return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
-
 @app.route('/capture', methods=['POST'])
 def capture():
+    global global_img_debug
+
     cap = cv2.VideoCapture(0)
     ret, frame = cap.read()
     cap.release()
@@ -116,21 +109,15 @@ def capture():
         image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         cv2.imwrite(image_path, frame)
 
-        global global_img_debug
-
         classifier = BrailleClassifier()
         img = BrailleImage(image_path)
-        global_img_debug = img.get_final_image()
-
-
-
+        global_img_debug = img.get_original_image().copy()
 
         for letter in custom_segmentation(img):
             print("Character bounding box:", letter.get_bounding_box())
             print("Dots in this box:", letter.get_dot_coordinates())
             letter.mark()
             classifier.push(letter)
-
 
         proc_img_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{filename}-proc.png")
         cv2.imwrite(proc_img_path, img.get_final_image())
@@ -146,9 +133,6 @@ def capture():
         })
     else:
         return jsonify({"error": True, "message": "Webcam capture failed"})
-
-
-import numpy as np
 
 class FakeBrailleCharacter:
     def __init__(self, bounding_box, dot_coords, dot_diameter):
@@ -179,10 +163,8 @@ def custom_segmentation(image):
     blur = cv2.GaussianBlur(gray, (5,5), 0)
     _, thresh = cv2.threshold(blur, 100, 255, cv2.THRESH_BINARY_INV)
 
-    # Detect blobs (Braille dots)
     contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     dots = []
-
     for cnt in contours:
         (x, y), radius = cv2.minEnclosingCircle(cnt)
         if 3 <= radius <= 20:
@@ -190,9 +172,8 @@ def custom_segmentation(image):
 
     print(f"🟣 Total detected dots: {len(dots)}")
 
-    # Group dots by Y into lines
-    dots = sorted(dots, key=lambda d: (d[0][1], d[0][0]))  # sort by y, then x
-    line_threshold = 40  # pixel height to separate lines
+    dots = sorted(dots, key=lambda d: (d[0][1], d[0][0]))
+    line_threshold = 40
     lines = []
     current_line = []
 
@@ -210,12 +191,11 @@ def custom_segmentation(image):
     characters = []
     dot_diameter = np.mean([d[1]*2 for d in dots]) if dots else 10
 
-    for line_num, line in enumerate(lines):
-        line = sorted(line, key=lambda d: d[0][0])  # sort by x
+    for line in lines:
+        line = sorted(line, key=lambda d: d[0][0])
         i = 0
         while i + 1 < len(line):
             group = line[i:i+2]
-            # Try to form a full 6-dot character by looking vertically
             x_coords = [p[0][0] for p in group]
             y_top = min(p[0][1] for p in group) - int(dot_diameter)
             y_bot = max(p[0][1] for p in group) + int(dot_diameter)
@@ -234,11 +214,10 @@ def custom_segmentation(image):
                 print(f"📦 Grouping {len(cell_dots)} dots into one character at {box}")
                 characters.append(FakeBrailleCharacter(box, cell_dots, dot_diameter))
 
-            i += 2  # move to next character group
+            i += 2
 
     print(f"✅ Total Braille cells formed: {len(characters)}\n")
     return characters
-
 
 if __name__ == "__main__":
     try:
