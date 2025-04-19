@@ -79,6 +79,8 @@ def get_combination(box, dots, diameter):
         if len(dots) == 0:
             break
 
+        print("🧪 Final result array (dot combo):", result, "| Types:", [type(v) for v in result])
+
     return end, start, width, tuple(result)
 
 
