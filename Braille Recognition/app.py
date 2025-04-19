@@ -51,6 +51,8 @@ def upload():
 
         classifier = BrailleClassifier()
         img = BrailleImage(image_path)
+        global global_img_debug
+        global_img_debug = img.get_original_image().copy()
 
 
         for letter in custom_segmentation(img):
