@@ -72,12 +72,15 @@ def get_combination(box, dots, diameter):
         }
 
         for corner, pos in corners.items():
-                D = get_dot_nearest(dots, int(diameter), corner)
+            print(f"👉 Checking corner: {corner}, assigned pos {pos}")
+            D = get_dot_nearest(dots, int(diameter), corner)
                 if D is not None:
+                        print(f"✅ Found dot near {corner}: {D}")
                         dots.remove(D)
                         result[pos - 1] = 1
-                if len(dots) == 0:
+                 if len(dots) == 0:
                         break
+
 
         print("🧪 Final result array (dot combo):", result, "| Types:", [type(v) for v in result])
         print(f"👉 Checking corner: {corner}, assigned pos {pos}")
