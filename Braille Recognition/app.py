@@ -49,6 +49,7 @@ def upload():
         classifier = BrailleClassifier()
         img = BrailleImage(image_path)
         for letter in SegmentationEngine(image=img):
+            print(f"Segmented letter at position (top={letter.get_top()}, left={letter.get_left()})")
             letter.mark()
             classifier.push(letter)
 
@@ -103,7 +104,8 @@ def capture():
         for letter in SegmentationEngine(image=img):
             letter.mark()
             # 🔍 Add debug: show the raw dot info
-            print(f"Segmented letter dots: {letter.get_dots()}")
+            print(f"Segmented letter at position (top={letter.get_top()}, left={letter.get_left()})")
+
             classifier.push(letter)
 
         # 🔍 Show final decoded string
