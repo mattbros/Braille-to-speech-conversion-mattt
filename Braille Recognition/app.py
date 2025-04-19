@@ -107,19 +107,17 @@ def capture():
         classifier = BrailleClassifier()
         img = BrailleImage(image_path)
 
-for letter in SegmentationEngine(image=img):
-    print("Character bounding box:", letter.get_bounding_box())
-    print("Dots in this box:", letter.get_dot_coordinates())
-    letter.mark()
-    classifier.push(letter)
-
-
-        # 🔍 Show final decoded string
-        print("Full Digest:", classifier.digest())
+        for letter in SegmentationEngine(image=img):
+            print("Character bounding box:", letter.get_bounding_box())
+            print("Dots in this box:", letter.get_dot_coordinates())
+            letter.mark()
+            classifier.push(letter)
 
         proc_img_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{filename}-proc.png")
         cv2.imwrite(proc_img_path, img.get_final_image())
         os.unlink(image_path)
+
+        print("Full Digest:", classifier.digest())
 
         return jsonify({
             "error": False,
@@ -129,6 +127,7 @@ for letter in SegmentationEngine(image=img):
         })
     else:
         return jsonify({"error": True, "message": "Webcam capture failed"})
+
 
 
 
