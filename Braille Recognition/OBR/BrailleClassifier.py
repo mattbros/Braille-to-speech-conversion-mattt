@@ -133,7 +133,7 @@ class BrailleClassifier(object):
         dots = character.get_dot_coordinates()
         diameter = character.get_dot_diameter()
 
-        end, start, width, combination = get_combination(box, dots, diameter, global_img_debug)
+        end, start, width, combination = get_combination(box, dots, diameter)
         print("🔢 Dot combination:", combination)
 
         if combination not in self.symbol_table:
