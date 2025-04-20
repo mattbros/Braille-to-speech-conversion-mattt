@@ -7,6 +7,9 @@ from flask import Flask, jsonify, render_template, send_file, redirect, request,
 from werkzeug.utils import secure_filename
 from OBR import SegmentationEngine, BrailleClassifier, BrailleImage
 
+from flask import render_template
+
+
 # Shared image for debug drawing in get_combination
 global_img_debug = None
 
