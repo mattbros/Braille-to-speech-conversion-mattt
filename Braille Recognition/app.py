@@ -157,6 +157,11 @@ def custom_segmentation(image):
     print(f"✅ Total Braille cells formed: {len(characters)}\n")
     return characters
 
+@app.route('/')
+def index():
+    return "Braille OCR API is running. Use the /digest endpoint to POST images."
+
+
 if __name__ == "__main__":
     try:
         app.run(debug=True)
