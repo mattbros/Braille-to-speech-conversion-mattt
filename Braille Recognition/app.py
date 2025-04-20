@@ -5,7 +5,10 @@ import uuid
 import numpy as np
 from flask import Flask, jsonify, render_template, send_file, redirect, request, Response
 from werkzeug.utils import secure_filename
-from OBR import BrailleClassifier, BrailleImage
+from OBR import SegmentationEngine, BrailleClassifier, BrailleImage
+
+# Shared image for debug drawing in get_combination
+global_img_debug = None
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 tempdir = tempfile.TemporaryDirectory()
@@ -47,8 +50,11 @@ def upload():
         image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(image_path)
 
+        global global_img_debug
+
+        classifier = BrailleClassifier()
         img = BrailleImage(image_path)
-        classifier = BrailleClassifier(img_debug=img.get_original_image().copy())
+        global_img_debug = img.get_original_image().copy()
 
         for letter in custom_segmentation(img):
             print("Character bounding box:", letter.get_bounding_box())
@@ -101,8 +107,11 @@ def capture():
         image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         cv2.imwrite(image_path, frame)
 
+        global global_img_debug
+
+        classifier = BrailleClassifier()
         img = BrailleImage(image_path)
-        classifier = BrailleClassifier(img_debug=img.get_original_image().copy())
+        global_img_debug = img.get_original_image().copy()
 
         for letter in custom_segmentation(img):
             print("Character bounding box:", letter.get_bounding_box())
@@ -151,11 +160,12 @@ def custom_segmentation(image):
 
     img = image.get_original_image()
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    blur = cv2.GaussianBlur(gray, (5,5), 0)
+    blur = cv2.GaussianBlur(gray, (5, 5), 0)
     _, thresh = cv2.threshold(blur, 100, 255, cv2.THRESH_BINARY_INV)
 
     contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     dots = []
+
     for cnt in contours:
         (x, y), radius = cv2.minEnclosingCircle(cnt)
         if 3 <= radius <= 20:
@@ -180,13 +190,13 @@ def custom_segmentation(image):
     print(f"📏 Lines detected: {len(lines)}")
 
     characters = []
-    dot_diameter = np.mean([d[1]*2 for d in dots]) if dots else 10
+    dot_diameter = np.mean([d[1] * 2 for d in dots]) if dots else 10
 
-    for line in lines:
+    for line_num, line in enumerate(lines):
         line = sorted(line, key=lambda d: d[0][0])
         i = 0
         while i + 1 < len(line):
-            group = line[i:i+2]
+            group = line[i:i + 2]
             x_coords = [p[0][0] for p in group]
             y_top = min(p[0][1] for p in group) - int(dot_diameter)
             y_bot = max(p[0][1] for p in group) + int(dot_diameter)
@@ -195,7 +205,11 @@ def custom_segmentation(image):
 
             box = (x_left, x_right, y_top, y_bot)
 
-            cell_dots = [d for d in dots if x_left <= d[0][0] <= x_right and y_top <= d[0][1] <= y_bot]
+            cell_dots = []
+            for d in dots:
+                dx, dy = d[0]
+                if x_left <= dx <= x_right and y_top <= dy <= y_bot:
+                    cell_dots.append(d)
 
             if len(cell_dots) >= 1:
                 print(f"📦 Grouping {len(cell_dots)} dots into one character at {box}")
