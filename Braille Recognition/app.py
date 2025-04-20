@@ -164,6 +164,46 @@ def custom_segmentation(image):
 def index():
     return render_template("index.html")
 
+@app.route('/digest', methods=['POST'])
+def upload():
+    if 'file' not in request.files:
+        return jsonify({"error": True, "message": "No file part"})
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": True, "message": "No selected file"})
+
+    if file and file.filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS:
+        filename = ''.join(str(uuid.uuid4()).split('-'))
+        image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(image_path)
+
+        from OBR import BrailleImage, BrailleClassifier
+        global global_img_debug
+
+        classifier = BrailleClassifier()
+        img = BrailleImage(image_path)
+        global_img_debug = img.get_original_image().copy()
+
+        characters = custom_segmentation(img)
+        for char in characters:
+            char.mark()
+            classifier.push(char)
+
+        processed_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{filename}-proc.png")
+        cv2.imwrite(processed_path, img.get_final_image())
+        os.unlink(image_path)
+
+        return jsonify({
+            "error": False,
+            "message": "Success",
+            "img_id": filename,
+            "digest": classifier.digest()
+        })
+
+    return jsonify({"error": True, "message": "Invalid file format"})
+
+
 
 if __name__ == "__main__":
     try:
