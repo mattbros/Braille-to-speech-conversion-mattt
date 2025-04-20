@@ -162,7 +162,7 @@ def custom_segmentation(image):
 
 @app.route('/')
 def index():
-    return "Braille OCR API is running. Use the /digest endpoint to POST images."
+    return render_template("index.html")
 
 
 if __name__ == "__main__":
