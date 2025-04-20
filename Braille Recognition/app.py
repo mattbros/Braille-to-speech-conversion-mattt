@@ -1,14 +1,11 @@
-import cv2 
+import cv2
 import tempfile
 import os
 import uuid
+import numpy as np
 from flask import Flask, jsonify, render_template, send_file, redirect, request, Response
 from werkzeug.utils import secure_filename
-from OBR import SegmentationEngine, BrailleClassifier, BrailleImage
-import numpy as np
-
-# For drawing corner debug circles
-global_img_debug = None
+from OBR import BrailleClassifier, BrailleImage
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 tempdir = tempfile.TemporaryDirectory()
@@ -40,8 +37,6 @@ def proc_image(img_id):
 
 @app.route('/digest', methods=['POST'])
 def upload():
-    global global_img_debug
-
     if 'file' not in request.files:
         return jsonify({"error": True, "message": "file not in request"})
     file = request.files['file']
@@ -52,9 +47,8 @@ def upload():
         image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(image_path)
 
-        classifier = BrailleClassifier()
         img = BrailleImage(image_path)
-        global_img_debug = img.get_original_image().copy()
+        classifier = BrailleClassifier(img_debug=img.get_original_image().copy())
 
         for letter in custom_segmentation(img):
             print("Character bounding box:", letter.get_bounding_box())
@@ -98,8 +92,6 @@ def video_feed():
 
 @app.route('/capture', methods=['POST'])
 def capture():
-    global global_img_debug
-
     cap = cv2.VideoCapture(0)
     ret, frame = cap.read()
     cap.release()
@@ -109,9 +101,8 @@ def capture():
         image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         cv2.imwrite(image_path, frame)
 
-        classifier = BrailleClassifier()
         img = BrailleImage(image_path)
-        global_img_debug = img.get_original_image().copy()
+        classifier = BrailleClassifier(img_debug=img.get_original_image().copy())
 
         for letter in custom_segmentation(img):
             print("Character bounding box:", letter.get_bounding_box())
@@ -204,11 +195,7 @@ def custom_segmentation(image):
 
             box = (x_left, x_right, y_top, y_bot)
 
-            cell_dots = []
-            for d in dots:
-                dx, dy = d[0]
-                if x_left <= dx <= x_right and y_top <= dy <= y_bot:
-                    cell_dots.append(d)
+            cell_dots = [d for d in dots if x_left <= d[0][0] <= x_right and y_top <= d[0][1] <= y_bot]
 
             if len(cell_dots) >= 1:
                 print(f"📦 Grouping {len(cell_dots)} dots into one character at {box}")
@@ -224,5 +211,4 @@ if __name__ == "__main__":
         app.run(debug=True)
     finally:
         tempdir.cleanup()
-
 
