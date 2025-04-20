@@ -7,9 +7,6 @@ from flask import Flask, jsonify, render_template, send_file, redirect, request,
 from werkzeug.utils import secure_filename
 from OBR import SegmentationEngine, BrailleClassifier, BrailleImage
 
-from flask import render_template
-
-
 # Shared image for debug drawing in get_combination
 global_img_debug = None
 
@@ -134,17 +131,20 @@ def custom_segmentation(image):
 
     for line_num, line in enumerate(lines):
         line = sorted(line, key=lambda d: d[0][0])
-
         i = 0
         while i < len(line):
             group = [line[i]]
-            for j in range(i + 1, len(line)):
-                if abs(line[j][0][0] - line[i][0][0]) < dot_diameter * 1.5:
+            cx, cy = line[i][0]
+            j = i + 1
+            while j < len(line):
+                nx, ny = line[j][0]
+                if abs(nx - cx) < dot_diameter * 2.5:
                     group.append(line[j])
+                    j += 1
                 else:
                     break
 
-            if group:
+            if len(group) >= 2:
                 x_coords = [p[0][0] for p in group]
                 y_coords = [p[0][1] for p in group]
                 x_left = min(x_coords) - int(dot_diameter)
@@ -163,6 +163,13 @@ def custom_segmentation(image):
 @app.route('/')
 def index():
     return render_template("index.html")
+
+@app.route('/procimage/<string:img_id>')
+def proc_image(img_id):
+    image = os.path.join(app.config['UPLOAD_FOLDER'], f"{secure_filename(img_id)}-proc.png")
+    if os.path.exists(image):
+        return send_file(image, mimetype='image/png')
+    return redirect('/coverimage')
 
 @app.route('/digest', methods=['POST'])
 def upload():
@@ -203,10 +210,9 @@ def upload():
 
     return jsonify({"error": True, "message": "Invalid file format"})
 
-
-
 if __name__ == "__main__":
     try:
         app.run(debug=True)
     finally:
         tempdir.cleanup()
+
