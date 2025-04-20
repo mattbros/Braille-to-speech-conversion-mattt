@@ -10,6 +10,61 @@ from OBR import SegmentationEngine, BrailleClassifier, BrailleImage
 # Shared image for debug drawing in get_combination
 global_img_debug = None
 
+# --- Added Matching Utilities ---
+def get_distance(p1, p2):
+    return (p1[0] - p2[0])**2 + (p1[1] - p2[1])**2
+
+def get_dot_nearest(dots, diameter, pt1):
+    nearest = None
+    min_dist = float('inf')
+    tolerance = (diameter * 1.25) ** 2
+    for dot in dots:
+        dist = get_distance(dot[0], pt1)
+        if dist <= tolerance and dist < min_dist:
+            nearest = dot
+            min_dist = dist
+    return nearest
+
+def get_combination(box, dots, diameter):
+    global global_img_debug
+
+    result = [0, 0, 0, 0, 0, 0]
+    left, right, top, bottom = box
+    midpointY = (bottom - top) // 2
+    end = (right, midpointY)
+    start = (left, midpointY)
+    width = right - left
+
+    corners = {
+        (left, top): 1,
+        (left, top + midpointY): 2,
+        (left, bottom): 3,
+        (right, top): 4,
+        (right, top + midpointY): 5,
+        (right, bottom): 6
+    }
+
+    local_dots = list(dots)
+    for corner, pos in corners.items():
+        if global_img_debug is not None:
+            cv2.circle(global_img_debug, corner, 6, (0, 0, 255), -1)
+
+        print(f"👉 Checking corner: {corner}, assigned pos {pos}")
+        D = get_dot_nearest(local_dots, diameter, corner)
+        if D is not None:
+            print(f"✅ Found dot near {corner}: {D}")
+            local_dots.remove(D)
+            result[pos - 1] = 1
+        else:
+            print(f"❌ No dot near {corner}")
+        if not local_dots:
+            print("🚫 No more dots left to match.")
+            break
+
+    print("🧪 Final result array (dot combo):", result, "| Types:", [type(v) for v in result])
+    return end, start, width, tuple(result)
+
+# --- Flask setup ---
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 tempdir = tempfile.TemporaryDirectory()
 
@@ -51,7 +106,6 @@ def upload():
         file.save(image_path)
 
         global global_img_debug
-
         classifier = BrailleClassifier()
         img = BrailleImage(image_path)
         global_img_debug = img.get_original_image().copy()
@@ -108,7 +162,6 @@ def capture():
         cv2.imwrite(image_path, frame)
 
         global global_img_debug
-
         classifier = BrailleClassifier()
         img = BrailleImage(image_path)
         global_img_debug = img.get_original_image().copy()
@@ -134,6 +187,7 @@ def capture():
     else:
         return jsonify({"error": True, "message": "Webcam capture failed"})
 
+# --- Segmentation Logic ---
 class FakeBrailleCharacter:
     def __init__(self, bounding_box, dot_coords, dot_diameter):
         self._bbox = bounding_box
