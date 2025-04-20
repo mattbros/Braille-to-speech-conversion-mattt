@@ -1,19 +1,18 @@
-# 🔧 File: OBR/BrailleClassifier.py
-
 from math import sqrt
+import cv2
 
 def get_distance(p1, p2):
-        x1,y1 = p1
-        x2,y2 = p2
-        return ((x2 - x1)**2) + ((y2 - y1)**2)
+        x1, y1 = p1
+        x2, y2 = p2
+        return ((x2 - x1) ** 2) + ((y2 - y1) ** 2)
 
 def get_dot_nearest(dots, diameter, pt1):
         nearest = None
-        diameter **= 2
+        diameter_squared = diameter ** 2
         for dot in dots:
             point = dot[0]
             dist_from_pt1 = get_distance(point, pt1)
-            if dist_from_pt1 <= diameter:
+            if dist_from_pt1 <= diameter_squared:
                 if nearest is None:
                     nearest = dot
                 else:
@@ -23,9 +22,7 @@ def get_dot_nearest(dots, diameter, pt1):
                         nearest = dot
         return nearest
 
-def get_combination(box, dots, diameter, img_debug=None):
-        import cv2
-
+def get_combination(box, dots, diameter, debug_img=None):
         result = [0, 0, 0, 0, 0, 0]
         left, right, top, bottom = box
 
@@ -44,8 +41,8 @@ def get_combination(box, dots, diameter, img_debug=None):
         }
 
         for corner, pos in corners.items():
-                if img_debug is not None:
-                        cv2.circle(img_debug, corner, 6, (0, 0, 255), -1)
+                if debug_img is not None:
+                        cv2.circle(debug_img, corner, 6, (0, 0, 255), -1)
 
                 print(f"👉 Checking corner: {corner}, assigned pos {pos}")
                 D = get_dot_nearest(dots, int(diameter), corner)
@@ -62,7 +59,13 @@ def get_combination(box, dots, diameter, img_debug=None):
         print("🧪 Final result array (dot combo):", result, "| Types:", [type(v) for v in result])
         return end, start, width, tuple(result)
 
-class Symbol:
+def translate_to_number(value):
+    return {
+        'a': '1', 'b': '2', 'c': '3', 'd': '4', 'e': '5',
+        'f': '6', 'g': '7', 'h': '8', 'i': '9'
+    }.get(value, '0')
+
+class Symbol(object):
     def __init__(self, value=None, letter=False, special=False):
         self.is_letter = letter
         self.is_special = special
@@ -77,58 +80,54 @@ class Symbol:
     def special(self):
         return self.is_special
 
-def translate_to_number(value):
-    return {
-        'a': '1', 'b': '2', 'c': '3', 'd': '4', 'e': '5',
-        'f': '6', 'g': '7', 'h': '8', 'i': '9'
-    }.get(value, '0')
-
-class BrailleClassifier:
+class BrailleClassifier(object):
     symbol_table = {
-        (1,0,0,0,0,0): Symbol('a', letter=True),
-        (1,1,0,0,0,0): Symbol('b', letter=True),
-        (1,0,0,1,0,0): Symbol('c', letter=True),
-        (1,0,0,1,1,0): Symbol('d', letter=True),
-        (1,0,0,0,1,0): Symbol('e', letter=True),
-        (1,1,0,1,0,0): Symbol('f', letter=True),
-        (1,1,0,1,1,0): Symbol('g', letter=True),
-        (1,1,0,0,1,0): Symbol('h', letter=True),
-        (0,1,0,1,0,0): Symbol('i', letter=True),
-        (0,1,0,1,1,0): Symbol('j', letter=True),
-        (1,0,1,0,0,0): Symbol('k', letter=True),
-        (1,1,1,0,0,0): Symbol('l', letter=True),
-        (1,0,1,1,0,0): Symbol('m', letter=True),
-        (1,0,1,1,1,0): Symbol('n', letter=True),
-        (1,0,1,0,1,0): Symbol('o', letter=True),
-        (1,1,1,1,0,0): Symbol('p', letter=True),
-        (1,1,1,1,1,0): Symbol('q', letter=True),
-        (1,1,1,0,1,0): Symbol('r', letter=True),
-        (0,1,1,1,0,0): Symbol('s', letter=True),
-        (0,1,1,1,1,0): Symbol('t', letter=True),
-        (1,0,1,0,0,1): Symbol('u', letter=True),
-        (1,1,1,0,0,1): Symbol('v', letter=True),
-        (0,1,0,1,1,1): Symbol('w', letter=True),
-        (1,0,1,1,0,1): Symbol('x', letter=True),
-        (1,0,1,1,1,1): Symbol('y', letter=True),
-        (1,0,1,0,1,1): Symbol('z', letter=True),
-        (0,0,1,1,1,1): Symbol('#', special=True),
+         (1,0,0,0,0,0): Symbol('a',letter=True),
+         (1,1,0,0,0,0): Symbol('b',letter=True),
+         (1,0,0,1,0,0): Symbol('c',letter=True),
+         (1,0,0,1,1,0): Symbol('d',letter=True),
+         (1,0,0,0,1,0): Symbol('e',letter=True),
+         (1,1,0,1,0,0): Symbol('f',letter=True),
+         (1,1,0,1,1,0): Symbol('g',letter=True),
+         (1,1,0,0,1,0): Symbol('h',letter=True),
+         (0,1,0,1,0,0): Symbol('i',letter=True),
+         (0,1,0,1,1,0): Symbol('j',letter=True),
+         (1,0,1,0,0,0): Symbol('K',letter=True),
+         (1,1,1,0,0,0): Symbol('l',letter=True),
+         (1,0,1,1,0,0): Symbol('m',letter=True),
+         (1,0,1,1,1,0): Symbol('n',letter=True),
+         (1,0,1,0,1,0): Symbol('o',letter=True),
+         (1,1,1,1,0,0): Symbol('p',letter=True),
+         (1,1,1,1,1,0): Symbol('q',letter=True),
+         (1,1,1,0,1,0): Symbol('r',letter=True),
+         (0,1,1,1,0,0): Symbol('s',letter=True),
+         (0,1,1,1,1,0): Symbol('t',letter=True),
+         (1,0,1,0,0,1): Symbol('u',letter=True),
+         (1,1,1,0,0,1): Symbol('v',letter=True),
+         (0,1,0,1,1,1): Symbol('w',letter=True),
+         (1,0,1,1,0,1): Symbol('x',letter=True),
+         (1,0,1,1,1,1): Symbol('y',letter=True),
+         (1,0,1,0,1,1): Symbol('z',letter=True),
+         (0,0,1,1,1,1): Symbol('#',special=True),
     }
 
-    def __init__(self, img_debug=None):
+    def __init__(self):
         self.result = ''
         self.shift_on = False
         self.prev_end = None
         self.number = False
-        self.img_debug = img_debug
 
     def push(self, character):
         if not character.is_valid():
             return
+
+        from app import global_img_debug  # safely import inside method
+
         box = character.get_bounding_box()
         dots = character.get_dot_coordinates()
         diameter = character.get_dot_diameter()
-        end, start, width, combination = get_combination(box, dots, diameter, img_debug=self.img_debug)
 
+        end, start, width, combination = get_combination(box, dots, diameter, global_img_debug)
         print("🔢 Dot combination:", combination)
 
         if combination not in self.symbol_table:
@@ -146,9 +145,10 @@ class BrailleClassifier:
             self.number = False
             self.result += translate_to_number(symbol.value)
         elif symbol.letter():
-            self.result += symbol.value
-        elif symbol.value == '#':
-            self.number = True
+            self.result += symbol.value.upper() if self.shift_on else symbol.value
+        else:
+            if symbol.value == '#':
+                self.number = True
 
     def digest(self):
         return self.result
@@ -158,3 +158,4 @@ class BrailleClassifier:
         self.shift_on = False
         self.prev_end = None
         self.number = False
+
