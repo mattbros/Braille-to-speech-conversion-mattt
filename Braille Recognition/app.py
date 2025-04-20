@@ -213,7 +213,7 @@ def custom_segmentation(image):
 
             if len(cell_dots) >= 1:
                 print(f"📦 Grouping {len(cell_dots)} dots into one character at {box}")
-                characters.append(FakeBrailleCharacter(box, cell_dots, dot_diameter))
+                characters.append(FakeBrailleCharacter(box, cell_dots, dot_diameter * 1.5))
 
             i += 2
 
@@ -225,4 +225,3 @@ if __name__ == "__main__":
         app.run(debug=True)
     finally:
         tempdir.cleanup()
-
