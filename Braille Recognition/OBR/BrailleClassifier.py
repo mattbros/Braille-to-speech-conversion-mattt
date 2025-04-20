@@ -27,40 +27,41 @@ def get_dot_nearest(dots, diameter, pt1):
 
 
 def get_combination(box, dots, diameter):
-    result = [0, 0, 0, 0, 0, 0]
+    from app import global_img_debug
+
+    result = [0] * 6
     left, right, top, bottom = box
+    width = right - left
+    height = bottom - top
 
-    midpointY = int((bottom - top) / 2)
-    end = (right, midpointY)
-    start = (left, midpointY)
-    width = int(right - left)
+    # Positions for 6-dot braille grid (3 rows, 2 columns)
+    col_spacing = width / 3  # small buffer spacing
+    row_spacing = height / 4
 
-    corners = {
-        (left, top): 1,
-        (left, top + midpointY): 2,
-        (left, bottom): 3,
-        (right, top): 4,
-        (right, top + midpointY): 5,
-        (right, bottom): 6
-    }
+    positions = [
+        (left + col_spacing, top + row_spacing),        # Dot 1
+        (left + col_spacing, top + 2 * row_spacing),    # Dot 2
+        (left + col_spacing, top + 3 * row_spacing),    # Dot 3
+        (right - col_spacing, top + row_spacing),       # Dot 4
+        (right - col_spacing, top + 2 * row_spacing),   # Dot 5
+        (right - col_spacing, top + 3 * row_spacing)    # Dot 6
+    ]
 
-    for corner, pos in corners.items():
-        if global_img_debug is not None:
-            cv2.circle(global_img_debug, corner, 6, (0, 0, 255), -1)
-
-        print(f"👉 Checking corner: {corner}, assigned pos {pos}")
-        D = get_dot_nearest(dots, int(diameter), corner)
-        if D is not None:
-            print(f"✅ Found dot near {corner}: {D}")
-            dots.remove(D)
-            result[pos - 1] = 1
+    for idx, expected_center in enumerate(positions):
+        for dot in dots:
+            dot_center = dot[0]
+            dist = get_distance(dot_center, expected_center)
+            if dist < (diameter ** 2):  # within range
+                result[idx] = 1
+                if global_img_debug is not None:
+                    cv2.circle(global_img_debug, expected_center, 6, (0, 255, 0), -1)
+                break
         else:
-            print(f"❌ No dot near {corner}")
-        if len(dots) == 0:
-            print("🚫 No more dots left to match.")
-            break
+            if global_img_debug is not None:
+                cv2.circle(global_img_debug, expected_center, 6, (0, 0, 255), -1)
 
-    print("🧪 Final result array (dot combo):", result, "| Types:", [type(v) for v in result])
+    end = (right, (top + bottom) // 2)
+    start = (left, (top + bottom) // 2)
     return end, start, width, tuple(result)
 
 
