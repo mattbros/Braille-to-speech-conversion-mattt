@@ -34,35 +34,35 @@ def get_combination(box, dots, diameter):
     width = right - left
     height = bottom - top
 
-    # Positions for 6-dot braille grid (3 rows, 2 columns)
-    col_spacing = width / 3  # small buffer spacing
-    row_spacing = height / 4
-
+    # Calculate expected positions of 6-dot Braille grid using relative spacing
     positions = [
-        (left + col_spacing, top + row_spacing),        # Dot 1
-        (left + col_spacing, top + 2 * row_spacing),    # Dot 2
-        (left + col_spacing, top + 3 * row_spacing),    # Dot 3
-        (right - col_spacing, top + row_spacing),       # Dot 4
-        (right - col_spacing, top + 2 * row_spacing),   # Dot 5
-        (right - col_spacing, top + 3 * row_spacing)    # Dot 6
+        (left + 0.25 * width, top + 0.2 * height),   # Dot 1
+        (left + 0.25 * width, top + 0.5 * height),   # Dot 2
+        (left + 0.25 * width, top + 0.8 * height),   # Dot 3
+        (left + 0.75 * width, top + 0.2 * height),   # Dot 4
+        (left + 0.75 * width, top + 0.5 * height),   # Dot 5
+        (left + 0.75 * width, top + 0.8 * height),   # Dot 6
     ]
+
+    radius_squared = (diameter * 1.2) ** 2  # allow some wiggle room
 
     for idx, expected_center in enumerate(positions):
         for dot in dots:
             dot_center = dot[0]
             dist = get_distance(dot_center, expected_center)
-            if dist < (diameter ** 2):  # within range
+            if dist < radius_squared:
                 result[idx] = 1
                 if global_img_debug is not None:
-                    cv2.circle(global_img_debug, expected_center, 6, (0, 255, 0), -1)
+                    cv2.circle(global_img_debug, expected_center, 6, (0, 255, 0), -1)  # green = hit
                 break
         else:
             if global_img_debug is not None:
-                cv2.circle(global_img_debug, expected_center, 6, (0, 0, 255), -1)
+                cv2.circle(global_img_debug, expected_center, 6, (0, 0, 255), -1)  # red = miss
 
     end = (right, (top + bottom) // 2)
     start = (left, (top + bottom) // 2)
     return end, start, width, tuple(result)
+
 
 
 def translate_to_number(value):
