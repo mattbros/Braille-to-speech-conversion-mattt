@@ -23,46 +23,39 @@ def get_dot_nearest(dots, diameter, pt1):
         return nearest
 
 def get_combination(box, dots, diameter):
-    import cv2
-    global global_img_debug
-
     result = [0, 0, 0, 0, 0, 0]
     left, right, top, bottom = box
 
-    cell_height = (bottom - top)
-    cell_width = (right - left)
-    third_height = cell_height // 3
+    midpointY = int((bottom - top) / 2)
+    end = (right, midpointY)
+    start = (left, midpointY)
+    width = int(right - left)
 
-    # Calculate positions for standard 6-dot Braille (top-down, left-to-right)
     corners = {
-        (left, top): 1,                        # Top-left
-        (left, top + third_height): 2,        # Middle-left
-        (left, top + 2 * third_height): 3,    # Bottom-left
-        (right, top): 4,                      # Top-right
-        (right, top + third_height): 5,       # Middle-right
-        (right, top + 2 * third_height): 6    # Bottom-right
+        (left, top): 1,
+        (left, top + midpointY): 2,
+        (left, bottom): 3,
+        (right, top): 4,
+        (right, top + midpointY): 5,
+        (right, bottom): 6
     }
 
     for corner, pos in corners.items():
-        cx, cy = corner
-        if global_img_debug is not None:
-            cv2.circle(global_img_debug, (cx, cy), 6, (0, 0, 255), -1)  # Red dot
-
         print(f"👉 Checking corner: {corner}, assigned pos {pos}")
-        D = get_dot_nearest(dots, int(diameter * 1.5), corner)  # more generous match
+        D = get_dot_nearest(dots, int(diameter), corner)
         if D is not None:
             print(f"✅ Found dot near {corner}: {D}")
             dots.remove(D)
             result[pos - 1] = 1
         else:
             print(f"❌ No dot near {corner}")
-
         if len(dots) == 0:
             print("🚫 No more dots left to match.")
             break
 
     print("🧪 Final result array (dot combo):", result, "| Types:", [type(v) for v in result])
-    return (right, top + cell_height // 2), (left, top + cell_height // 2), cell_width, tuple(result)
+    return end, start, width, tuple(result)
+
 
 
 def translate_to_number(value):
