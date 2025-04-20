@@ -156,3 +156,9 @@ def custom_segmentation(image):
 
     print(f"✅ Total Braille cells formed: {len(characters)}\n")
     return characters
+
+if __name__ == "__main__":
+    try:
+        app.run(debug=True)
+    finally:
+        tempdir.cleanup()
