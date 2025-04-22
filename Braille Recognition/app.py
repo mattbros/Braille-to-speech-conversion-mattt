@@ -22,7 +22,7 @@ def get_distance(p1, p2):
 def get_dot_nearest(dots, diameter, pt1):
     nearest = None
     min_dist = float('inf')
-    tolerance = (diameter * 1.5) ** 2                    #tolerance was 1.25, changed for more robustness
+    tolerance = (diameter * 1.5) ** 2  # tolerance was 1.25, changed for more robustness
     for dot in dots:
         dist = get_distance(dot[0], pt1)
         if dist <= tolerance and dist < min_dist:
@@ -108,10 +108,12 @@ def custom_segmentation(image):
         if 3 <= radius <= 20:
             dots.append(((int(x), int(y)), int(radius)))
 
-    print(f"🟣 Total detected dots: {len(dots)}")
+    print(f"🔣 Total detected dots: {len(dots)}")
 
+    dot_diameter = np.mean([d[1] * 2 for d in dots]) if dots else 10
     dots = sorted(dots, key=lambda d: (d[0][1], d[0][0]))
-    line_threshold = int(dot_diameter * 2.2)                             #Was line_threshold = 40, changed for robustness
+    line_threshold = int(dot_diameter * 2.2)  # Was line_threshold = 40, changed for robustness
+
     lines = []
     current_line = []
 
@@ -127,7 +129,6 @@ def custom_segmentation(image):
     print(f"📏 Lines detected: {len(lines)}")
 
     characters = []
-    dot_diameter = np.mean([d[1] * 2 for d in dots]) if dots else 10
 
     for line_num, line in enumerate(lines):
         line = sorted(line, key=lambda d: d[0][0])
@@ -159,7 +160,7 @@ def custom_segmentation(image):
 
     print(f"✅ Total Braille cells formed: {len(characters)}\n")
     if global_img_debug is not None:
-        cv2.imwrite("debug_overlay.png", global_img_debug)                    #Added for debugging to see how it defines braille characterse
+        cv2.imwrite("debug_overlay.png", global_img_debug)  # Added for debugging to see how it defines braille characters
 
     return characters
 
@@ -206,7 +207,6 @@ def upload():
 
         print("📝 DIGEST RESULT:", classifier.digest())
 
-        
         return jsonify({
             "error": False,
             "message": "Success",
