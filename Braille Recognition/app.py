@@ -99,12 +99,8 @@ def custom_segmentation(image):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     blur = cv2.GaussianBlur(gray, (5, 5), 0)
     # Use adaptive threshold for better contrast handling
-    thresh = cv2.adaptiveThreshold(
-        blur, 255, 
-        cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
-        cv2.THRESH_BINARY_INV, 
-        11, 2
-    )
+    _, thresh = cv2.threshold(blur, 100, 255, cv2.THRESH_BINARY_INV)
+
     # Debugging tip: save the thresholded image
     cv2.imwrite("thresh_debug.png", thresh)
 
