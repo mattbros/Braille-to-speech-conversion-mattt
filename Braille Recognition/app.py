@@ -159,7 +159,7 @@ def custom_segmentation(image):
 
     print(f"✅ Total Braille cells formed: {len(characters)}\n")
     if global_img_debug is not None:
-    cv2.imwrite("debug_overlay.png", global_img_debug)                    //Added for debugging to see how it defines braille characterse
+        cv2.imwrite("debug_overlay.png", global_img_debug)                    //Added for debugging to see how it defines braille characterse
 
     return characters
 
