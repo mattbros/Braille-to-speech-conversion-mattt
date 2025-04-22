@@ -201,6 +201,9 @@ def upload():
         cv2.imwrite(processed_path, img.get_final_image())
         os.unlink(image_path)
 
+        print("📝 DIGEST RESULT:", classifier.digest())
+
+        
         return jsonify({
             "error": False,
             "message": "Success",
