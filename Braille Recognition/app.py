@@ -180,6 +180,42 @@ def index():
 def webcam():
     return render_template("webcam.html")
 
+@app.route('/capture', methods=['POST'])
+def capture():
+    if 'image' not in request.files:
+        return jsonify({"error": True, "message": "No image file provided"}), 400
+
+    file = request.files['image']
+    if file.filename == '':
+        return jsonify({"error": True, "message": "Empty filename"}), 400
+
+    if file and file.filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS:
+        filename = ''.join(str(uuid.uuid4()).split('-')) + ".png"
+        image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(image_path)
+
+        from OBR import BrailleImage, BrailleClassifier
+        global global_img_debug
+
+        classifier = BrailleClassifier()
+        img = BrailleImage(image_path)
+        global_img_debug = img.get_original_image().copy()
+
+        characters = custom_segmentation(img)
+        for char in characters:
+            char.mark()
+            classifier.push(char)
+
+        os.unlink(image_path)
+
+        return jsonify({
+            "error": False,
+            "message": "Success",
+            "digest": classifier.digest()
+        })
+
+    return jsonify({"error": True, "message": "Invalid image format"}), 400
+
 @app.route('/procimage/<string:img_id>')
 def proc_image(img_id):
     image = os.path.join(app.config['UPLOAD_FOLDER'], f"{secure_filename(img_id)}-proc.png")
@@ -227,22 +263,6 @@ def upload():
         })
 
     return jsonify({"error": True, "message": "Invalid file format"})
-
-@app.route('/video_feed')
-def video_feed():
-    def generate():
-        cap = cv2.VideoCapture(0)
-        while True:
-            success, frame = cap.read()
-            if not success:
-                break
-            _, buffer = cv2.imencode('.jpg', frame)
-            frame_bytes = buffer.tobytes()
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
-    return Response(generate(), mimetype='multipart/x-mixed-replace; boundary=frame')
-
-
 
 if __name__ == "__main__":
     try:
