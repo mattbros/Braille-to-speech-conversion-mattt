@@ -98,7 +98,15 @@ def custom_segmentation(image):
     img = image.get_original_image()
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     blur = cv2.GaussianBlur(gray, (5, 5), 0)
-    _, thresh = cv2.threshold(blur, 100, 255, cv2.THRESH_BINARY_INV)
+    # Use adaptive threshold for better contrast handling
+    thresh = cv2.adaptiveThreshold(
+        blur, 255, 
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+        cv2.THRESH_BINARY_INV, 
+        11, 2
+    )
+    # Debugging tip: save the thresholded image
+    cv2.imwrite("thresh_debug.png", thresh)
 
     contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     dots = []
