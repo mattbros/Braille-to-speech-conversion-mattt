@@ -98,8 +98,12 @@ def custom_segmentation(image):
     img = image.get_original_image()
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     blur = cv2.GaussianBlur(gray, (5, 5), 0)
-    # Use adaptive threshold for better contrast handling
-    _, thresh = cv2.threshold(blur, 100, 255, cv2.THRESH_BINARY_INV)
+    thresh = cv2.adaptiveThreshold(
+        blur, 255,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY_INV,
+        11, 2
+    )
 
     # Debugging tip: save the thresholded image
     cv2.imwrite("thresh_debug.png", thresh)
@@ -172,6 +176,10 @@ def custom_segmentation(image):
 def index():
     return render_template("index.html")
 
+@app.route('/webcam')
+def webcam():
+    return render_template("webcam.html")
+
 @app.route('/procimage/<string:img_id>')
 def proc_image(img_id):
     image = os.path.join(app.config['UPLOAD_FOLDER'], f"{secure_filename(img_id)}-proc.png")
@@ -225,4 +233,3 @@ if __name__ == "__main__":
         app.run(debug=True)
     finally:
         tempdir.cleanup()
-
