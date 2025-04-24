@@ -22,7 +22,7 @@ def get_distance(p1, p2):
 def get_dot_nearest(dots, diameter, pt1):
     nearest = None
     min_dist = float('inf')
-    tolerance = (diameter * 1.5) ** 2
+    tolerance = (diameter * 1.2) ** 2  # Tightened tolerance
     for dot in dots:
         dist = get_distance(dot[0], pt1)
         if dist <= tolerance and dist < min_dist:
@@ -61,7 +61,6 @@ def get_combination(box, dots, diameter):
 
     print("🔢 Dot combination:", tuple(result))
     return None, None, None, tuple(result)
-
 
 # --- Character Class ---
 class FakeBrailleCharacter:
@@ -145,6 +144,11 @@ def custom_segmentation(image):
                     j += 1
                 else:
                     break
+
+            if len(group) > 6:
+                print(f"⚠️ Skipping group of {len(group)} dots – likely overlapping characters")
+                i += 1
+                continue
 
             if len(group) >= 2:
                 x_coords = [p[0][0] for p in group]
