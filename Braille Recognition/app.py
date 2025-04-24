@@ -224,9 +224,18 @@ def capture():
         characters = custom_segmentation(img)
         for char in characters:
             char.mark()
-            bbox, assigned_dots, dot_diameter, combo = get_combination(
-                char.get_bounding_box(), char.get_dot_coordinates(), char.get_dot_diameter()
+            bbox = char.get_bounding_box()
+            dot_coords = char.get_dot_coordinates()
+            dot_diameter = char.get_dot_diameter()
+
+            print(f"Bounding Box: {bbox}")
+            print(f"Dot Coordinates: {dot_coords}")
+            print(f"Dot Diameter: {dot_diameter}")
+
+            bbox_result, assigned_dots, diameter_result, combo = get_combination(
+                bbox, dot_coords, dot_diameter
             )
+            print(f"Combination: {combo}")
             classifier.push(char)
 
         os.unlink(image_path)
@@ -268,9 +277,18 @@ def upload():
         characters = custom_segmentation(img)
         for char in characters:
             char.mark()
-            bbox, assigned_dots, dot_diameter, combo = get_combination(
-                char.get_bounding_box(), char.get_dot_coordinates(), char.get_dot_diameter()
+            bbox = char.get_bounding_box()
+            dot_coords = char.get_dot_coordinates()
+            dot_diameter = char.get_dot_diameter()
+
+            print(f"Bounding Box: {bbox}")
+            print(f"Dot Coordinates: {dot_coords}")
+            print(f"Dot Diameter: {dot_diameter}")
+
+            bbox_result, assigned_dots, diameter_result, combo = get_combination(
+                bbox, dot_coords, dot_diameter
             )
+            print(f"Combination: {combo}")
             classifier.push(char)
 
         os.unlink(image_path)
