@@ -22,7 +22,7 @@ def get_distance(p1, p2):
 def get_dot_nearest(dots, diameter, pt1):
     nearest = None
     min_dist = float('inf')
-    tolerance = (diameter * 1.4) ** 2
+    tolerance = (diameter * 1.5) ** 2  # Relaxed tolerance for better matching
     for dot in dots:
         dist = get_distance(dot[0], pt1)
         if dist <= tolerance and dist < min_dist:
@@ -35,7 +35,7 @@ def get_combination(box, dots, diameter):
 
     result = [0, 0, 0, 0, 0, 0]
     left, right, top, bottom = box
-    midpointY = (bottom - top) // 3
+    midpointY = (bottom - top) // 2
     corners = {
         (left, top): 1,
         (left, top + midpointY): 2,
@@ -51,6 +51,7 @@ def get_combination(box, dots, diameter):
             cv2.circle(global_img_debug, corner, 6, (255, 0, 0), 2)
 
         D = get_dot_nearest(local_dots, diameter, corner)
+        print(f"🔵 Corner {corner} → Dot {D}")
         if D:
             result[pos - 1] = 1
             local_dots.remove(D)
@@ -168,6 +169,7 @@ def custom_segmentation(image):
         cv2.imwrite("debug_overlay.png", global_img_debug)
 
     return characters
+
 
 @app.route('/')
 def index():
