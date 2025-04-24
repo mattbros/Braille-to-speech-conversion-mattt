@@ -170,6 +170,70 @@ def custom_segmentation(image):
 
     return characters
 
+@app.route('/')
+def index():
+    return render_template("index.html")
+
+@app.route('/webcam')
+def webcam():
+    return render_template("webcam.html")
+
+@app.route('/video_feed')
+def video_feed():
+    def gen_frames():
+        cap = cv2.VideoCapture(0)
+        while True:
+            success, frame = cap.read()
+            if not success:
+                break
+            else:
+                ret, buffer = cv2.imencode('.jpg', frame)
+                frame = buffer.tobytes()
+                yield (b'--frame\r\n'
+                       b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+    return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+@app.route('/capture', methods=['POST'])
+def capture():
+    if 'image' not in request.files:
+        return jsonify({"error": True, "message": "No image file provided"}), 400
+
+    file = request.files['image']
+    if file.filename == '':
+        return jsonify({"error": True, "message": "Empty filename"}), 400
+
+    if file and file.filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS:
+        filename = ''.join(str(uuid.uuid4()).split('-')) + ".png"
+        image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(image_path)
+
+        classifier = BrailleClassifier()
+        img = BrailleImage(image_path)
+        global global_img_debug
+        global_img_debug = img.get_original_image().copy()
+
+        characters = custom_segmentation(img)
+        for char in characters:
+            char.mark()
+            classifier.push(char)
+
+        os.unlink(image_path)
+
+        return jsonify({
+            "error": False,
+            "message": "Success",
+            "digest": classifier.digest()
+        })
+
+    return jsonify({"error": True, "message": "Invalid image format"}), 400
+
+@app.route('/procimage/<string:img_id>')
+def proc_image(img_id):
+    image = os.path.join(app.config['UPLOAD_FOLDER'], f"{secure_filename(img_id)}-proc.png")
+    if os.path.exists(image):
+        return send_file(image, mimetype='image/png')
+    return redirect('/coverimage')
+
 @app.route('/digest', methods=['POST'])
 def upload():
     if 'file' not in request.files:
