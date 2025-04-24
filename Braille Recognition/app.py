@@ -49,6 +49,7 @@ def get_combination(box, dots, diameter):
     for corner, pos in corners.items():
         if global_img_debug is not None:
             cv2.circle(global_img_debug, corner, 6, (255, 0, 0), 2)
+            cv2.putText(global_img_debug, str(pos), corner, cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1)
 
         D = get_dot_nearest(local_dots, diameter, corner)
         print(f"🔵 Corner {corner} → Dot {D}")
@@ -140,7 +141,7 @@ def custom_segmentation(image):
             j = i + 1
             while j < len(line):
                 nx, ny = line[j][0]
-                if abs(nx - cx) < dot_diameter * 1.6:
+                if abs(nx - cx) < dot_diameter * 1.3:
                     group.append(line[j])
                     j += 1
                 else:
@@ -169,6 +170,7 @@ def custom_segmentation(image):
         cv2.imwrite("debug_overlay.png", global_img_debug)
 
     return characters
+
 
 @app.route('/')
 def index():
