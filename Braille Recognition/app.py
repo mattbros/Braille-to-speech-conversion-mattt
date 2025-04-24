@@ -13,7 +13,8 @@ app.config['UPLOAD_FOLDER'] = tempdir.name
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
 # Shared image for debug drawing in get_combination
-global global_img_debug = None
+global global_img_debug
+global_img_debug = None
 
 # --- Utility Functions ---
 def get_distance(p1, p2):
