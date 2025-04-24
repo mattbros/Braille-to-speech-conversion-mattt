@@ -22,7 +22,7 @@ def get_distance(p1, p2):
 def get_dot_nearest(dots, diameter, pt1):
     nearest = None
     min_dist = float('inf')
-    tolerance = (diameter * 1.5) ** 2  # tolerance was 1.25, changed for more robustness
+    tolerance = (diameter * 2.0) ** 2  # Increased from 1.5 for robustness
     for dot in dots:
         dist = get_distance(dot[0], pt1)
         if dist <= tolerance and dist < min_dist:
@@ -58,7 +58,7 @@ def get_combination(box, dots, diameter):
         D = get_dot_nearest(local_dots, diameter, corner)
         if D is not None:
             print(f"✅ Found dot near {corner}: {D}")
-            local_dots.remove(D)
+            # local_dots.remove(D)  # Commented to allow shared dots
             result[pos - 1] = 1
         else:
             print(f"❌ No dot near {corner}")
@@ -118,9 +118,9 @@ def custom_segmentation(image):
 
     print(f"🔣 Total detected dots: {len(dots)}")
 
-    dot_diameter = np.mean([d[1] * 2 for d in dots]) if dots else 10
+    dot_diameter = np.median([d[1] * 2 for d in dots]) if dots else 10
     dots = sorted(dots, key=lambda d: (d[0][1], d[0][0]))
-    line_threshold = int(dot_diameter * 2.2)  # Was line_threshold = 40, changed for robustness
+    line_threshold = int(dot_diameter * 2.2)
 
     lines = []
     current_line = []
@@ -168,9 +168,12 @@ def custom_segmentation(image):
 
     print(f"✅ Total Braille cells formed: {len(characters)}\n")
     if global_img_debug is not None:
-        cv2.imwrite("debug_overlay.png", global_img_debug)  # Added for debugging to see how it defines braille characters
+        cv2.imwrite("debug_overlay.png", global_img_debug)
 
     return characters
+
+# Other routes omitted for brevity in this snippet — they remain unchanged.
+
 
 @app.route('/')
 def index():
