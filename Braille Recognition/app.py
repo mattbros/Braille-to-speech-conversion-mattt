@@ -48,12 +48,20 @@ def get_combination(box, dots, diameter):
     local_dots = list(dots)
     for corner, pos in corners.items():
         if global_img_debug is not None:
-            cv2.circle(global_img_debug, corner, 6, (0, 0, 255), -1)
+            cv2.circle(global_img_debug, corner, 6, (255, 0, 0), 2)
 
         D = get_dot_nearest(local_dots, diameter, corner)
-        if D is not None:
+        if D:
             result[pos - 1] = 1
+            local_dots.remove(D)
+            if global_img_debug is not None:
+                cv2.circle(global_img_debug, D[0], 6, (0, 255, 0), -1)
+        else:
+            print(f"🟡 No dot found near {corner} (expected pos {pos})")
+
+    print("🔢 Dot combination:", tuple(result))
     return None, None, None, tuple(result)
+
 
 # --- Character Class ---
 class FakeBrailleCharacter:
@@ -132,7 +140,7 @@ def custom_segmentation(image):
             j = i + 1
             while j < len(line):
                 nx, ny = line[j][0]
-                if abs(nx - cx) < dot_diameter * 2.0:
+                if abs(nx - cx) < dot_diameter * 1.6:
                     group.append(line[j])
                     j += 1
                 else:
