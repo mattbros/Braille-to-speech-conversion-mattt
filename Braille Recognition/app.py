@@ -22,7 +22,7 @@ def get_distance(p1, p2):
 def get_dot_nearest(dots, diameter, pt1):
     nearest = None
     min_dist = float('inf')
-    tolerance = (diameter * 2.0) ** 2  # Increased from 1.5 for robustness
+    tolerance = (diameter * 1.5) ** 2  # Reduced slightly from 2.0 to balance matching
     for dot in dots:
         dist = get_distance(dot[0], pt1)
         if dist <= tolerance and dist < min_dist:
@@ -36,10 +36,6 @@ def get_combination(box, dots, diameter):
     result = [0, 0, 0, 0, 0, 0]
     left, right, top, bottom = box
     midpointY = (bottom - top) // 2
-    end = (right, midpointY)
-    start = (left, midpointY)
-    width = right - left
-
     corners = {
         (left, top): 1,
         (left, top + midpointY): 2,
@@ -49,25 +45,15 @@ def get_combination(box, dots, diameter):
         (right, bottom): 6
     }
 
-    local_dots = list(dots)  # Don't mutate original
+    local_dots = list(dots)
     for corner, pos in corners.items():
         if global_img_debug is not None:
             cv2.circle(global_img_debug, corner, 6, (0, 0, 255), -1)
 
-        print(f"👉 Checking corner: {corner}, assigned pos {pos}")
         D = get_dot_nearest(local_dots, diameter, corner)
         if D is not None:
-            print(f"✅ Found dot near {corner}: {D}")
-            # local_dots.remove(D)  # Commented to allow shared dots
             result[pos - 1] = 1
-        else:
-            print(f"❌ No dot near {corner}")
-        if not local_dots:
-            print("🚫 No more dots left to match.")
-            break
-
-    print("🧪 Final result array (dot combo):", result, "| Types:", [type(v) for v in result])
-    return end, start, width, tuple(result)
+    return None, None, None, tuple(result)
 
 # --- Character Class ---
 class FakeBrailleCharacter:
@@ -100,12 +86,11 @@ def custom_segmentation(image):
     blur = cv2.GaussianBlur(gray, (5, 5), 0)
     thresh = cv2.adaptiveThreshold(
         blur, 255,
-        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.ADAPTIVE_THRESH_MEAN_C,
         cv2.THRESH_BINARY_INV,
-        11, 2
+        11, 3
     )
 
-    # Debugging tip: save the thresholded image
     cv2.imwrite("thresh_debug.png", thresh)
 
     contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -113,14 +98,14 @@ def custom_segmentation(image):
 
     for cnt in contours:
         (x, y), radius = cv2.minEnclosingCircle(cnt)
-        if 3 <= radius <= 20:
+        if 3 <= radius <= 18:
             dots.append(((int(x), int(y)), int(radius)))
 
     print(f"🔣 Total detected dots: {len(dots)}")
 
     dot_diameter = np.median([d[1] * 2 for d in dots]) if dots else 10
     dots = sorted(dots, key=lambda d: (d[0][1], d[0][0]))
-    line_threshold = int(dot_diameter * 2.2)
+    line_threshold = int(dot_diameter * 2.0)
 
     lines = []
     current_line = []
@@ -147,7 +132,7 @@ def custom_segmentation(image):
             j = i + 1
             while j < len(line):
                 nx, ny = line[j][0]
-                if abs(nx - cx) < dot_diameter * 2.5:
+                if abs(nx - cx) < dot_diameter * 2.0:
                     group.append(line[j])
                     j += 1
                 else:
@@ -171,6 +156,7 @@ def custom_segmentation(image):
         cv2.imwrite("debug_overlay.png", global_img_debug)
 
     return characters
+
 
 # Other routes omitted for brevity in this snippet — they remain unchanged.
 
