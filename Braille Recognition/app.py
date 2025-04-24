@@ -22,7 +22,7 @@ def get_distance(p1, p2):
 def get_dot_nearest(dots, diameter, pt1):
     nearest = None
     min_dist = float('inf')
-    tolerance = (diameter * 1.5) ** 2  # Reduced slightly from 2.0 to balance matching
+    tolerance = (diameter * 1.5) ** 2
     for dot in dots:
         dist = get_distance(dot[0], pt1)
         if dist <= tolerance and dist < min_dist:
@@ -156,6 +156,7 @@ def custom_segmentation(image):
         cv2.imwrite("debug_overlay.png", global_img_debug)
 
     return characters
+
 
 
 # Other routes omitted for brevity in this snippet — they remain unchanged.
