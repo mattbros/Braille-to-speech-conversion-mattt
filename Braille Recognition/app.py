@@ -173,7 +173,6 @@ def custom_segmentation(image):
 
     return characters
 
-
 @app.route('/')
 def index():
     return render_template("index.html")
@@ -280,5 +279,8 @@ def upload():
 if __name__ == "__main__":
     try:
         app.run(debug=True)
+    finally:
+        tempdir.cleanup()
+
     finally:
         tempdir.cleanup()
