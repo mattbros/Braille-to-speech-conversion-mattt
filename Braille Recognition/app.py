@@ -7,6 +7,10 @@ from flask import Flask, jsonify, render_template, send_file, redirect, request,
 from werkzeug.utils import secure_filename
 from OBR import SegmentationEngine, BrailleClassifier, BrailleImage
 
+# Automatically pull latest changes from GitHub
+os.system("git pull origin mattbros-patch-1")
+
+
 # Shared image for debug drawing in get_combination
 global_img_debug = None
 
