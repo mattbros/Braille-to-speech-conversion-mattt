@@ -154,7 +154,7 @@ def custom_segmentation(image):
                 i += 1
                 continue
 
-            if len(group) >= 2:
+            if 1 <= len(group) <= 6:
                 x_coords = [p[0][0] for p in group]
                 y_coords = [p[0][1] for p in group]
                 x_left = min(x_coords) - int(dot_diameter)
@@ -172,6 +172,7 @@ def custom_segmentation(image):
         cv2.imwrite("debug_overlay.png", global_img_debug)
 
     return characters
+
 
 @app.route('/')
 def index():
