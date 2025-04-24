@@ -173,11 +173,6 @@ def custom_segmentation(image):
 
     return characters
 
-# Add remaining Flask routes and classifier logic from previous version (capture, digest, procimage, video_feed, etc)
-# You can paste or append them here if needed.
-
-
-
 @app.route('/')
 def index():
     return render_template("index.html")
