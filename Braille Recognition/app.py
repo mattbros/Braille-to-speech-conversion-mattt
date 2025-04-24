@@ -22,7 +22,7 @@ def get_distance(p1, p2):
 def get_dot_nearest(dots, diameter, pt1):
     nearest = None
     min_dist = float('inf')
-    tolerance = (diameter * 1.2) ** 2  # Tightened tolerance
+    tolerance = (diameter * 1.4) ** 2
     for dot in dots:
         dist = get_distance(dot[0], pt1)
         if dist <= tolerance and dist < min_dist:
@@ -35,7 +35,7 @@ def get_combination(box, dots, diameter):
 
     result = [0, 0, 0, 0, 0, 0]
     left, right, top, bottom = box
-    midpointY = (bottom - top) // 2
+    midpointY = (bottom - top) // 3
     corners = {
         (left, top): 1,
         (left, top + midpointY): 2,
