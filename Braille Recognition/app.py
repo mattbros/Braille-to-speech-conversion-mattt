@@ -13,7 +13,7 @@ app.config['UPLOAD_FOLDER'] = tempdir.name
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
 # Shared image for debug drawing in get_combination
-global_img_debug = None
+global global_img_debug = None
 
 # --- Utility Functions ---
 def get_distance(p1, p2):
@@ -22,7 +22,8 @@ def get_distance(p1, p2):
 def get_dot_nearest(dots, diameter, pt1):
     nearest = None
     min_dist = float('inf')
-    tolerance = (diameter * 1.5) ** 2
+    tolerance_factor = 0.6  # Experiment with values like 0.5 to 0.7
+    tolerance = (diameter * tolerance_factor) ** 2
     for dot in dots:
         dist = get_distance(dot[0], pt1)
         if dist <= tolerance and dist < min_dist:
@@ -46,6 +47,8 @@ def get_combination(box, dots, diameter):
     }
 
     local_dots = list(dots)
+    assigned_dots = {}  # Keep track of assigned dots
+
     for corner, pos in corners.items():
         if global_img_debug is not None:
             cv2.circle(global_img_debug, corner, 6, (255, 0, 0), 2)
@@ -55,6 +58,7 @@ def get_combination(box, dots, diameter):
         print(f"🔵 Corner {corner} → Dot {D}")
         if D:
             result[pos - 1] = 1
+            assigned_dots[pos] = D
             local_dots.remove(D)
             if global_img_debug is not None:
                 cv2.circle(global_img_debug, D[0], 6, (0, 255, 0), -1)
@@ -62,7 +66,9 @@ def get_combination(box, dots, diameter):
             print(f"🟡 No dot found near {corner} (expected pos {pos})")
 
     print("🔢 Dot combination:", tuple(result))
-    return None, None, None, tuple(result)
+    # Return the bounding box and the assigned dots as well
+    assigned_coords = [d[0] for d in assigned_dots.values()] if assigned_dots else []
+    return (left, right, top, bottom), assigned_coords, diameter, tuple(result)
 
 # --- Character Class ---
 class FakeBrailleCharacter:
@@ -217,6 +223,9 @@ def capture():
         characters = custom_segmentation(img)
         for char in characters:
             char.mark()
+            bbox, assigned_dots, dot_diameter, combo = get_combination(
+                char.get_bounding_box(), char.get_dot_coordinates(), char.get_dot_diameter()
+            )
             classifier.push(char)
 
         os.unlink(image_path)
@@ -258,6 +267,9 @@ def upload():
         characters = custom_segmentation(img)
         for char in characters:
             char.mark()
+            bbox, assigned_dots, dot_diameter, combo = get_combination(
+                char.get_bounding_box(), char.get_dot_coordinates(), char.get_dot_diameter()
+            )
             classifier.push(char)
 
         os.unlink(image_path)
