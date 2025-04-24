@@ -10,7 +10,6 @@ from OBR import SegmentationEngine, BrailleClassifier, BrailleImage
 # Automatically pull latest changes from GitHub
 os.system("git pull origin mattbros-patch-1")
 
-
 # Shared image for debug drawing in get_combination
 global_img_debug = None
 
@@ -26,7 +25,7 @@ def get_distance(p1, p2):
 def get_dot_nearest(dots, diameter, pt1):
     nearest = None
     min_dist = float('inf')
-    tolerance = (diameter * 1.5) ** 2  # Relaxed tolerance for better matching
+    tolerance = (diameter * 1.5) ** 2
     for dot in dots:
         dist = get_distance(dot[0], pt1)
         if dist <= tolerance and dist < min_dist:
@@ -173,6 +172,10 @@ def custom_segmentation(image):
         cv2.imwrite("debug_overlay.png", global_img_debug)
 
     return characters
+
+# Add remaining Flask routes and classifier logic from previous version (capture, digest, procimage, video_feed, etc)
+# You can paste or append them here if needed.
+
 
 
 @app.route('/')
