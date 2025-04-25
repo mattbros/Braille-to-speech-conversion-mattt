@@ -1,3 +1,5 @@
+#app.py
+
 import cv2
 import tempfile
 import os
@@ -22,8 +24,7 @@ def get_distance(p1, p2):
 def get_dot_nearest(dots, diameter, pt1):
     nearest = None
     min_dist = float('inf')
-    tolerance_factor = 0.6  # Reverted to a more adaptable tolerance
-    tolerance = (diameter * tolerance_factor) ** 2
+    tolerance = (diameter * 1.5) ** 2  # tolerance was 1.25, changed for more robustness
     for dot in dots:
         dist = get_distance(dot[0], pt1)
         if dist <= tolerance and dist < min_dist:
@@ -36,143 +37,39 @@ def get_combination(box, dots, diameter):
 
     result = [0, 0, 0, 0, 0, 0]
     left, right, top, bottom = box
-    midpointY = top + (bottom - top) // 2
-    end = (right, int(midpointY))
-    start = (left, int(midpointY))
+    midpointY = (bottom - top) // 2
+    end = (right, midpointY)
+    start = (left, midpointY)
     width = right - left
 
-    # Define expected corner positions
-    expected_corners = [
-        (left, top),             # 1
-        (left, int(midpointY)),   # 2
-        (left, bottom),          # 3
-        (right, top),            # 4
-        (right, int(midpointY)),  # 5
-        (right, bottom)           # 6
-    ]
+    corners = {
+        (left, top): 1,
+        (left, top + midpointY): 2,
+        (left, bottom): 3,
+        (right, top): 4,
+        (right, top + midpointY): 5,
+        (right, bottom): 6
+    }
 
-    assigned_indices = set() # Keep track of assigned dot indices
-
-    for i, corner in enumerate(expected_corners):
+    local_dots = list(dots)  # Don't mutate original
+    for corner, pos in corners.items():
         if global_img_debug is not None:
             cv2.circle(global_img_debug, corner, 6, (0, 0, 255), -1)
-            cv2.putText(global_img_debug, str(i + 1), corner, cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1)
 
-        for idx, dot in enumerate(dots):
-            distance = get_distance(dot[0], corner)
-            # Check if the dot is within a small radius of the expected corner
-            if distance <= (diameter * 0.6) ** 2 and idx not in assigned_indices:
-                print(f"✅ Dot {dot[0]} found near corner {i + 1} ({corner})")
-                result[i] = 1
-                assigned_indices.add(idx)
-                if global_img_debug is not None:
-                    cv2.circle(global_img_debug, dot[0], 6, (0, 255, 0), -1)
-                break # Move to the next expected corner
-
-    print("🧪 Final result array (dot combo):", tuple(result))
-    return end, start, width, tuple(result)
-# --- Character Class ---
-class FakeBrailleCharacter:
-    def __init__(self, bounding_box, dot_coords, dot_diameter):
-        self._bbox = bounding_box
-        self._dots = dot_coords
-        self._diameter = dot_diameter
-
-    def get_bounding_box(self):
-        return self._bbox
-
-    def get_dot_coordinates(self):
-        return self._dots
-
-    def get_dot_diameter(self):
-        return self._diameter
-
-    def is_valid(self):
-        return True
-
-    def mark(self):
-        pass
-
-# --- Segmentation ---
-def custom_segmentation(image):
-    print("⚙️ Running custom segmentation...")
-
-    img = image.get_original_image()
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    blur = cv2.GaussianBlur(gray, (5, 5), 0)
-    thresh = cv2.adaptiveThreshold(
-        blur, 255,
-        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-        cv2.THRESH_BINARY_INV,
-        11, 2
-    )
-
-    # Debugging tip: save the thresholded image
-    cv2.imwrite("thresh_debug.png", thresh)
-
-    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    dots = []
-
-    for cnt in contours:
-        (x, y), radius = cv2.minEnclosingCircle(cnt)
-        if 3 <= radius <= 20:
-            dots.append(((int(x), int(y)), int(radius)))
-
-    print(f"🔣 Total detected dots: {len(dots)}")
-
-    dot_diameter = np.mean([d[1] * 2 for d in dots]) if dots else 10
-    dots = sorted(dots, key=lambda d: (d[0][1], d[0][0]))
-    line_threshold = int(dot_diameter * 2.2)  # Was line_threshold = 40, changed for robustness
-
-    lines = []
-    current_line = []
-
-    for dot in dots:
-        if not current_line or abs(dot[0][1] - current_line[-1][0][1]) < line_threshold:
-            current_line.append(dot)
+        print(f"👉 Checking corner: {corner}, assigned pos {pos}")
+        D = get_dot_nearest(local_dots, diameter, corner)
+        if D is not None:
+            print(f"✅ Found dot near {corner}: {D}")
+            local_dots.remove(D)
+            result[pos - 1] = 1
         else:
-            lines.append(current_line)
-            current_line = [dot]
-    if current_line:
-        lines.append(current_line)
+            print(f"❌ No dot near {corner}")
+        if not local_dots:
+            print("🚫 No more dots left to match.")
+            break
 
-    print(f"📏 Lines detected: {len(lines)}")
-
-    characters = []
-
-    for line_num, line in enumerate(lines):
-        line = sorted(line, key=lambda d: d[0][0])
-        i = 0
-        while i < len(line):
-            group = [line[i]]
-            cx, cy = line[i][0]
-            j = i + 1
-            while j < len(line):
-                nx, ny = line[j][0]
-                if abs(nx - cx) < dot_diameter * 2.5:
-                    group.append(line[j])
-                    j += 1
-                else:
-                    break
-
-            if len(group) >= 2:
-                x_coords = [p[0][0] for p in group]
-                y_coords = [p[0][1] for p in group]
-                x_left = min(x_coords) - int(dot_diameter)
-                x_right = max(x_coords) + int(dot_diameter)
-                y_top = min(y_coords) - int(dot_diameter)
-                y_bot = max(y_coords) + int(dot_diameter)
-
-                box = (x_left, x_right, y_top, y_bot)
-                characters.append(FakeBrailleCharacter(box, group, dot_diameter * 1.5))
-
-            i += len(group)
-
-    print(f"✅ Total Braille cells formed: {len(characters)}\n")
-    if global_img_debug is not None:
-        cv2.imwrite("debug_overlay.png", global_img_debug)  # Added for debugging to see how it defines braille characters
-
-    return characters
+    print("🧪 Final result array (dot combo):", result, "| Types:", [type(v) for v in result])
+    return end, start, width, tuple(result)
 
 @app.route('/')
 def index():
@@ -196,19 +93,26 @@ def capture():
         image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(image_path)
 
-        from OBR import BrailleImage, BrailleClassifier
+        from OBR import BrailleImage, BrailleClassifier, SegmentationEngine
         global global_img_debug
 
-        classifier = BrailleClassifier()
         img = BrailleImage(image_path)
         global_img_debug = img.get_original_image().copy()
+        segmentation_engine = SegmentationEngine(img)
+        classifier = BrailleClassifier()
 
-        characters = custom_segmentation(img)
-        for char in characters:
+        for char in segmentation_engine:
             char.mark()
-            end, start, width, combo = get_combination(
-                char.get_bounding_box(), char.get_dot_coordinates(), char.get_dot_diameter()
-            )
+            bbox = char.get_bounding_box()
+            dot_coords = char.get_dot_coordinates()
+            dot_diameter = char.get_dot_diameter()
+
+            print(f"Bounding Box: {bbox}")
+            print(f"Dot Coordinates: {dot_coords}")
+            print(f"Dot Diameter: {dot_diameter}")
+
+            end, start, width, combo = get_combination(bbox, dot_coords, dot_diameter)
+            print(f"Combination: {combo}")
             classifier.push(char)
 
         os.unlink(image_path)
@@ -242,19 +146,26 @@ def upload():
         image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(image_path)
 
-        from OBR import BrailleImage, BrailleClassifier
+        from OBR import BrailleImage, BrailleClassifier, SegmentationEngine
         global global_img_debug
 
-        classifier = BrailleClassifier()
         img = BrailleImage(image_path)
         global_img_debug = img.get_original_image().copy()
+        segmentation_engine = SegmentationEngine(img)
+        classifier = BrailleClassifier()
 
-        characters = custom_segmentation(img)
-        for char in characters:
+        for char in segmentation_engine:
             char.mark()
-            end, start, width, combo = get_combination(
-                char.get_bounding_box(), char.get_dot_coordinates(), char.get_dot_diameter()
-            )
+            bbox = char.get_bounding_box()
+            dot_coords = char.get_dot_coordinates()
+            dot_diameter = char.get_dot_diameter()
+
+            print(f"Bounding Box: {bbox}")
+            print(f"Dot Coordinates: {dot_coords}")
+            print(f"Dot Diameter: {dot_diameter}")
+
+            end, start, width, combo = get_combination(bbox, dot_coords, dot_diameter)
+            print(f"Combination: {combo}")
             classifier.push(char)
 
         processed_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{filename}-proc.png")
