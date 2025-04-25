@@ -36,12 +36,12 @@ def get_combination(box, dots, diameter):
 
     result = [0, 0, 0, 0, 0, 0]
     left, right, top, bottom = box
-    midpointY = top + (bottom - top) // 2  # More accurate midpoint calculation
+    midpointY = top + (bottom - top) // 2
     end = (right, int(midpointY))
     start = (left, int(midpointY))
     width = right - left
 
-    # Define expected corner positions relative to the bounding box
+    # Define expected corner positions
     expected_corners = [
         (left, top),             # 1
         (left, int(midpointY)),   # 2
@@ -51,37 +51,26 @@ def get_combination(box, dots, diameter):
         (right, bottom)           # 6
     ]
 
-    assigned_dots = [None] * 6
-    local_dots = list(dots)  # Don't mutate original list
+    assigned_indices = set() # Keep track of assigned dot indices
 
     for i, corner in enumerate(expected_corners):
         if global_img_debug is not None:
             cv2.circle(global_img_debug, corner, 6, (0, 0, 255), -1)
             cv2.putText(global_img_debug, str(i + 1), corner, cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1)
 
-        nearest_dot = None
-        min_distance = float('inf')
-        current_best_dot_index = -1
-
-        for idx, dot in enumerate(local_dots):
+        for idx, dot in enumerate(dots):
             distance = get_distance(dot[0], corner)
-            if distance < min_distance and distance <= (diameter * 0.75) ** 2: # Adjusted tolerance
-                min_distance = distance
-                nearest_dot = dot
-                current_best_dot_index = idx
-
-        if nearest_dot:
-            print(f"✅ Assigned dot {nearest_dot[0]} to position {i + 1} (corner {corner})")
-            result[i] = 1
-            if global_img_debug is not None:
-                cv2.circle(global_img_debug, nearest_dot[0], 6, (0, 255, 0), -1)
-            local_dots.pop(current_best_dot_index) # Remove the assigned dot
-        else:
-            print(f"❌ No dot found for position {i + 1} (corner {corner})")
+            # Check if the dot is within a small radius of the expected corner
+            if distance <= (diameter * 0.6) ** 2 and idx not in assigned_indices:
+                print(f"✅ Dot {dot[0]} found near corner {i + 1} ({corner})")
+                result[i] = 1
+                assigned_indices.add(idx)
+                if global_img_debug is not None:
+                    cv2.circle(global_img_debug, dot[0], 6, (0, 255, 0), -1)
+                break # Move to the next expected corner
 
     print("🧪 Final result array (dot combo):", tuple(result))
     return end, start, width, tuple(result)
-
 # --- Character Class ---
 class FakeBrailleCharacter:
     def __init__(self, bounding_box, dot_coords, dot_diameter):
