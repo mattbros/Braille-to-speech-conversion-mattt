@@ -7,14 +7,13 @@ from flask import Flask, jsonify, render_template, send_file, redirect, request,
 from werkzeug.utils import secure_filename
 from OBR import SegmentationEngine, BrailleClassifier, BrailleImage
 
+# Shared image for debug drawing in get_combination
+global_img_debug = None
+
 app = Flask("Optical Braille Recognition Demo")
 tempdir = tempfile.TemporaryDirectory()
 app.config['UPLOAD_FOLDER'] = tempdir.name
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
-
-# Shared image for debug drawing in get_combination
-global global_img_debug
-global_img_debug = None
 
 # --- Utility Functions ---
 def get_distance(p1, p2):
@@ -23,7 +22,7 @@ def get_distance(p1, p2):
 def get_dot_nearest(dots, diameter, pt1):
     nearest = None
     min_dist = float('inf')
-    tolerance_factor = 0.6  # Experiment with values like 0.5 to 0.7
+    tolerance_factor = 0.6  # Adjusted tolerance
     tolerance = (diameter * tolerance_factor) ** 2
     for dot in dots:
         dist = get_distance(dot[0], pt1)
@@ -38,38 +37,45 @@ def get_combination(box, dots, diameter):
     result = [0, 0, 0, 0, 0, 0]
     left, right, top, bottom = box
     midpointY = (bottom - top) // 2
+    end = (right, midpointY)
+    start = (left, midpointY)
+    width = right - left
+
+    # More precise corner calculations based on potential dot arrangement
+    dot_spacing_factor = 0.8  # Adjust based on observed dot spacing relative to diameter
+    expected_dot_spacing = diameter * dot_spacing_factor
+
     corners = {
-        (left, top): 1,
-        (left, top + midpointY): 2,
-        (left, bottom): 3,
-        (right, top): 4,
-        (right, top + midpointY): 5,
-        (right, bottom): 6
+        (left + int(diameter * 0.5), top + int(diameter * 0.5)): 1,             # Top-left
+        (left + int(diameter * 0.5), top + midpointY): 2,                       # Middle-left
+        (left + int(diameter * 0.5), bottom - int(diameter * 0.5)): 3,          # Bottom-left
+        (right - int(diameter * 0.5), top + int(diameter * 0.5)): 4,            # Top-right
+        (right - int(diameter * 0.5), top + midpointY): 5,                      # Middle-right
+        (right - int(diameter * 0.5), bottom - int(diameter * 0.5)): 6          # Bottom-right
     }
 
-    local_dots = list(dots)
-    assigned_dots = {}  # Keep track of assigned dots
+    local_dots = list(dots)  # Don't mutate original
+    assigned_dots = {}
 
-    for corner, pos in corners.items():
+    for expected_corner, pos in corners.items():
         if global_img_debug is not None:
-            cv2.circle(global_img_debug, corner, 6, (255, 0, 0), 2)
-            cv2.putText(global_img_debug, str(pos), corner, cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1)
+            cv2.circle(global_img_debug, expected_corner, 6, (0, 0, 255), -1)
 
-        D = get_dot_nearest(local_dots, diameter, corner)
-        print(f"🔵 Corner {corner} → Dot {D}")
-        if D:
-            result[pos - 1] = 1
+        print(f"👉 Checking corner: {expected_corner}, assigned pos {pos}")
+        D = get_dot_nearest(local_dots, diameter, expected_corner)
+        if D is not None:
+            print(f"✅ Found dot near {expected_corner}: {D}")
             assigned_dots[pos] = D
             local_dots.remove(D)
-            if global_img_debug is not None:
-                cv2.circle(global_img_debug, D[0], 6, (0, 255, 0), -1)
+            result[pos - 1] = 1
         else:
-            print(f"🟡 No dot found near {corner} (expected pos {pos})")
+            print(f"❌ No dot near {expected_corner}")
+        if not local_dots and len(assigned_dots) < 6:
+            print("🚫 No more dots left, but not all positions filled.")
+            break
 
-    print("🔢 Dot combination:", tuple(result))
-    # Return the bounding box and the assigned dots as well
-    assigned_coords = [d[0] for d in assigned_dots.values()] if assigned_dots else []
-    return (left, right, top, bottom), assigned_coords, diameter, tuple(result)
+    print("🧪 Final result array (dot combo):", result, "| Types:", [type(v) for v in result])
+    return end, start, width, tuple(result)
 
 # --- Character Class ---
 class FakeBrailleCharacter:
@@ -102,11 +108,12 @@ def custom_segmentation(image):
     blur = cv2.GaussianBlur(gray, (5, 5), 0)
     thresh = cv2.adaptiveThreshold(
         blur, 255,
-        cv2.ADAPTIVE_THRESH_MEAN_C,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
         cv2.THRESH_BINARY_INV,
-        11, 3
+        11, 2
     )
 
+    # Debugging tip: save the thresholded image
     cv2.imwrite("thresh_debug.png", thresh)
 
     contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -114,14 +121,14 @@ def custom_segmentation(image):
 
     for cnt in contours:
         (x, y), radius = cv2.minEnclosingCircle(cnt)
-        if 3 <= radius <= 18:
+        if 3 <= radius <= 20:
             dots.append(((int(x), int(y)), int(radius)))
 
     print(f"🔣 Total detected dots: {len(dots)}")
 
-    dot_diameter = np.median([d[1] * 2 for d in dots]) if dots else 10
+    dot_diameter = np.mean([d[1] * 2 for d in dots]) if dots else 10
     dots = sorted(dots, key=lambda d: (d[0][1], d[0][0]))
-    line_threshold = int(dot_diameter * 2.0)
+    line_threshold = int(dot_diameter * 2.2)  # Was line_threshold = 40, changed for robustness
 
     lines = []
     current_line = []
@@ -148,18 +155,13 @@ def custom_segmentation(image):
             j = i + 1
             while j < len(line):
                 nx, ny = line[j][0]
-                if abs(nx - cx) < dot_diameter * 1.3:
+                if abs(nx - cx) < dot_diameter * 2.5:
                     group.append(line[j])
                     j += 1
                 else:
                     break
 
-            if len(group) > 6:
-                print(f"⚠️ Skipping group of {len(group)} dots – likely overlapping characters")
-                i += 1
-                continue
-
-            if 1 <= len(group) <= 6:
+            if len(group) >= 2:
                 x_coords = [p[0][0] for p in group]
                 y_coords = [p[0][1] for p in group]
                 x_left = min(x_coords) - int(dot_diameter)
@@ -174,10 +176,9 @@ def custom_segmentation(image):
 
     print(f"✅ Total Braille cells formed: {len(characters)}\n")
     if global_img_debug is not None:
-        cv2.imwrite("debug_overlay.png", global_img_debug)
+        cv2.imwrite("debug_overlay.png", global_img_debug)  # Added for debugging to see how it defines braille characters
 
     return characters
-
 
 @app.route('/')
 def index():
@@ -186,21 +187,6 @@ def index():
 @app.route('/webcam')
 def webcam():
     return render_template("webcam.html")
-
-@app.route('/video_feed')
-def video_feed():
-    def gen_frames():
-        cap = cv2.VideoCapture(0)
-        while True:
-            success, frame = cap.read()
-            if not success:
-                break
-            else:
-                ret, buffer = cv2.imencode('.jpg', frame)
-                frame = buffer.tobytes()
-                yield (b'--frame\r\n'
-                       b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-    return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 @app.route('/capture', methods=['POST'])
 def capture():
@@ -216,26 +202,19 @@ def capture():
         image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(image_path)
 
+        from OBR import BrailleImage, BrailleClassifier
+        global global_img_debug
+
         classifier = BrailleClassifier()
         img = BrailleImage(image_path)
-        global global_img_debug
         global_img_debug = img.get_original_image().copy()
 
         characters = custom_segmentation(img)
         for char in characters:
             char.mark()
-            bbox = char.get_bounding_box()
-            dot_coords = char.get_dot_coordinates()
-            dot_diameter = char.get_dot_diameter()
-
-            print(f"Bounding Box: {bbox}")
-            print(f"Dot Coordinates: {dot_coords}")
-            print(f"Dot Diameter: {dot_diameter}")
-
-            bbox_result, assigned_dots, diameter_result, combo = get_combination(
-                bbox, dot_coords, dot_diameter
+            end, start, width, combo = get_combination(
+                char.get_bounding_box(), char.get_dot_coordinates(), char.get_dot_diameter()
             )
-            print(f"Combination: {combo}")
             classifier.push(char)
 
         os.unlink(image_path)
@@ -269,41 +248,54 @@ def upload():
         image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(image_path)
 
+        from OBR import BrailleImage, BrailleClassifier
+        global global_img_debug
+
         classifier = BrailleClassifier()
         img = BrailleImage(image_path)
-        global global_img_debug
         global_img_debug = img.get_original_image().copy()
 
         characters = custom_segmentation(img)
         for char in characters:
             char.mark()
-            bbox = char.get_bounding_box()
-            dot_coords = char.get_dot_coordinates()
-            dot_diameter = char.get_dot_diameter()
-
-            print(f"Bounding Box: {bbox}")
-            print(f"Dot Coordinates: {dot_coords}")
-            print(f"Dot Diameter: {dot_diameter}")
-
-            bbox_result, assigned_dots, diameter_result, combo = get_combination(
-                bbox, dot_coords, dot_diameter
+            end, start, width, combo = get_combination(
+                char.get_bounding_box(), char.get_dot_coordinates(), char.get_dot_diameter()
             )
-            print(f"Combination: {combo}")
             classifier.push(char)
 
+        processed_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{filename}-proc.png")
+        cv2.imwrite(processed_path, img.get_final_image())
         os.unlink(image_path)
+
+        print("📝 DIGEST RESULT:", classifier.digest())
 
         return jsonify({
             "error": False,
             "message": "Success",
+            "img_id": filename,
             "digest": classifier.digest()
         })
 
     return jsonify({"error": True, "message": "Invalid file format"})
 
+@app.route('/video_feed')
+def video_feed():
+    def gen_frames():
+        cap = cv2.VideoCapture(0)
+        while True:
+            success, frame = cap.read()
+            if not success:
+                break
+            else:
+                ret, buffer = cv2.imencode('.jpg', frame)
+                frame = buffer.tobytes()
+                yield (b'--frame\r\n'
+                       b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+    return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+
 if __name__ == "__main__":
     try:
-        os.system("git pull origin mattbros-patch-1")
         app.run(debug=True)
     finally:
         tempdir.cleanup()
