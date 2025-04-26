@@ -1,198 +1,131 @@
 import cv2
- import numpy as np
- 
+import numpy as np
 
- class BrailleImage(object):
-  def __init__(self, image_path):  # Changed 'image' to 'image_path' for clarity
-  # Read source image
-  self.original = cv2.imread(image_path)
-  if self.original is None:
-  raise IOError('Cannot open given image')
- 
+class BrailleImage(object):
+    def __init__(self, image):
+        # Read source image
+        self.original = cv2.imread(image)
+        if self.original is None:
+            raise IOError('Cannot open given image')
 
-  self.correct_perspective()
-  self.original = self.preprocess_image(self.original)  # Preprocess immediately
- 
+        self.correct_perspective()  # <<< Perspective correction step added here
 
-  # First Layer, Convert BGR(Blue Green Red Scale) to Gray Scale
-  gray = cv2.cvtColor(self.original, cv2.COLOR_BGR2GRAY)
- 
+        # First Layer, Convert BGR(Blue Green Red Scale) to Gray Scale
+        gray = cv2.cvtColor(self.original, cv2.COLOR_BGR2GRAY)
 
-  # Save the binary image of the edge detected
-  self.edged_binary_image = self.__get_edged_binary_image(gray)
- 
+        # Save the binary image of the edge detected
+        self.edged_binary_image = self.__get_edged_binary_image(gray)
 
-  # Save a binary image to get the contents inside the edges
-  self.binary_image = self.__get_binary_image(gray)
- 
+        # Save a binary image to get the contents inside the edges
+        self.binary_image = self.__get_binary_image(gray)
 
-  self.final = self.original.copy()
-  self.height, self.width, self.channels = self.original.shape
-  return
- 
+        self.final = self.original.copy()
+        self.height, self.width, self.channels = self.original.shape
+        return
 
-  def preprocess_image(self, image):
-  """Applies preprocessing steps to improve Braille dot detection."""
- 
+    def correct_perspective(self):
+        """Auto-correct the perspective tilt of the Braille image."""
+        gray = cv2.cvtColor(self.original, cv2.COLOR_BGR2GRAY)
+        blur = cv2.GaussianBlur(gray, (5,5), 0)
+        edged = cv2.Canny(blur, 50, 200)
 
-  gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
- 
+        contours, _ = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if not contours:
+            return  # No contours found; skip correction
 
-  # Noise reduction
-  blur = cv2.GaussianBlur(gray, (5, 5), 0)
-  bilateral = cv2.bilateralFilter(blur, d=9, sigmaColor=75, sigmaSpace=75)
-  median = cv2.medianBlur(bilateral, 5)
- 
+        c = max(contours, key=cv2.contourArea)
 
-  # Adaptive thresholding
-  thresh = cv2.adaptiveThreshold(
-  median,
-  255,
-  cv2.ADAPTIVE_THRESH_GAUSSIAN_C,  # Or cv2.ADAPTIVE_THRESH_MEAN_C
-  cv2.THRESH_BINARY_INV,  # Invert for black dots on white paper
-  19,
-  -3,
-  )
- 
+        peri = cv2.arcLength(c, True)
+        approx = cv2.approxPolyDP(c, 0.02 * peri, True)
 
-  # Morphological operations
-  kernel = np.ones((3, 3), np.uint8)  # Adjust kernel size as needed
-  opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=2)
-  closing = cv2.morphologyEx(opening, cv2.MORPH_CLOSE, kernel, iterations=2)
- 
+        if len(approx) != 4:
+            return  # Not a quadrilateral; skip correction
 
-  return closing  # Use the 'closing' result
- 
+        pts = approx.reshape(4, 2)
+        rect = self.__order_points(pts)
 
-  def correct_perspective(self):
-  """Auto-correct the perspective tilt of the Braille image."""
-  gray = cv2.cvtColor(self.original, cv2.COLOR_BGR2GRAY)
-  blur = cv2.GaussianBlur(gray, (5, 5), 0)
-  edged = cv2.Canny(blur, 50, 200)
- 
+        (tl, tr, br, bl) = rect
 
-  contours, _ = cv2.findContours(
-  edged.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
-  )
-  if not contours:
-  return  # No contours found; skip correction
- 
+        widthA = np.linalg.norm(br - bl)
+        widthB = np.linalg.norm(tr - tl)
+        maxWidth = max(int(widthA), int(widthB))
 
-  c = max(contours, key=cv2.contourArea)
- 
+        heightA = np.linalg.norm(tr - br)
+        heightB = np.linalg.norm(tl - bl)
+        maxHeight = max(int(heightA), int(heightB))
 
-  peri = cv2.arcLength(c, True)
-  approx = cv2.approxPolyDP(c, 0.02 * peri, True)
- 
+        dst = np.array([
+            [0, 0],
+            [maxWidth - 1, 0],
+            [maxWidth - 1, maxHeight - 1],
+            [0, maxHeight - 1]
+        ], dtype="float32")
 
-  if len(approx) != 4:
-  return  # Not a quadrilateral; skip correction
- 
+        M = cv2.getPerspectiveTransform(rect, dst)
+        warped = cv2.warpPerspective(self.original, M, (maxWidth, maxHeight))
 
-  pts = approx.reshape(4, 2)
-  rect = self.__order_points(pts)
- 
+        self.original = warped
+        self.height, self.width, self.channels = warped.shape
 
-  (tl, tr, br, bl) = rect
- 
+    def __order_points(self, pts):
+        """Helper to consistently order corner points."""
+        rect = np.zeros((4, 2), dtype="float32")
 
-  widthA = np.linalg.norm(br - bl)
-  widthB = np.linalg.norm(tr - tl)
-  maxWidth = max(int(widthA), int(widthB))
- 
+        s = pts.sum(axis=1)
+        rect[0] = pts[np.argmin(s)]  # Top-left
+        rect[2] = pts[np.argmax(s)]  # Bottom-right
 
-  heightA = np.linalg.norm(tr - br)
-  heightB = np.linalg.norm(tl - bl)
-  maxHeight = max(int(heightA), int(heightB))
- 
+        diff = np.diff(pts, axis=1)
+        rect[1] = pts[np.argmin(diff)]  # Top-right
+        rect[3] = pts[np.argmax(diff)]  # Bottom-left
 
-  dst = np.array(
-  [[0, 0], [maxWidth - 1, 0], [maxWidth - 1, maxHeight - 1], [0, maxHeight - 1]],
-  dtype="float32",
-  )
- 
+        return rect
 
-  M = cv2.getPerspectiveTransform(rect, dst)
-  warped = cv2.warpPerspective(self.original, M, (maxWidth, maxHeight))
- 
+    def bound_box(self, left, right, top, bottom, color=(255, 0, 0), size=1):
+        self.final = cv2.rectangle(self.final, (left, top), (right, bottom), color, size)
+        return True
 
-  self.original = warped
-  self.height, self.width, self.channels = warped.shape
- 
+    def get_final_image(self):
+        return self.final
 
-  def __order_points(self, pts):
-  """Helper to consistently order corner points."""
-  rect = np.zeros((4, 2), dtype="float32")
- 
+    def get_original_image(self):
+        return self.original
 
-  s = pts.sum(axis=1)
-  rect[0] = pts[np.argmin(s)]  # Top-left
-  rect[2] = pts[np.argmax(s)]  # Bottom-right
- 
+    def get_edged_binary_image(self):
+        return self.edged_binary_image
 
-  diff = np.diff(pts, axis=1)
-  rect[1] = pts[np.argmin(diff)]  # Top-right
-  rect[3] = pts[np.argmax(diff)]  # Bottom-left
- 
+    def get_binary_image(self):
+        return self.binary_image
 
-  return rect
- 
+    def get_height(self):
+        return self.height
 
-  def bound_box(self, left, right, top, bottom, color=(255, 0, 0), size=1):
-  self.final = cv2.rectangle(self.final, (left, top), (right, bottom), color, size)
-  return True
- 
+    def get_width(self):
+        return self.width
 
-  def get_final_image(self):
-  return self.final
- 
+    def __get_edged_binary_image(self, gray):
+        # First Lvl Blur to Reduce Noise - Even more aggressive and adaptive blurring
+        blur = cv2.GaussianBlur(gray, (7, 7), 0)
 
-  def get_original_image(self):
-  return self.original
- 
+        # Adaptive Thresholding to define the dots in Braille - More adaptive parameters
+        thres = cv2.adaptiveThreshold(
+            blur, 255,
+            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+            cv2.THRESH_BINARY,
+            19,  # Increased block size even more
+            -3   # Slightly more negative C
+        )
 
-  def get_edged_binary_image(self):
-  return self.edged_binary_image
- 
+        blur2 = cv2.medianBlur(thres, 5)
+        ret2, th2 = cv2.threshold(blur2, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        blur3 = cv2.GaussianBlur(th2, (5, 5), 0)
+        ret3, th3 = cv2.threshold(blur3, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        return cv2.bitwise_not(th3)
 
-  def get_binary_image(self):
-  return self.binary_image
- 
+    def __get_binary_image(self, gray):
+        blur = cv2.GaussianBlur(gray, (7, 7), 0)
+        ret2, th2 = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        blur2 = cv2.medianBlur(th2, 5)
+        ret3, th3 = cv2.threshold(blur2, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        return cv2.bitwise_not(th3)
 
-  def get_height(self):
-  return self.height
- 
-
-  def get_width(self):
-  return self.width
- 
-
-  def __get_edged_binary_image(self, gray):
-  # First Lvl Blur to Reduce Noise - Even more aggressive and adaptive blurring
-  blur = cv2.GaussianBlur(gray, (7, 7), 0)
- 
-
-  # Adaptive Thresholding to define the dots in Braille - More adaptive parameters
-  thres = cv2.adaptiveThreshold(
-  blur,
-  255,
-  cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-  cv2.THRESH_BINARY,
-  19,  # Increased block size even more
-  -3,  # Slightly more negative C
-  )
- 
-
-  blur2 = cv2.medianBlur(thres, 5)
-  ret2, th2 = cv2.threshold(blur2, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-  blur3 = cv2.GaussianBlur(th2, (5, 5), 0)
-  ret3, th3 = cv2.threshold(blur3, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-  return cv2.bitwise_not(th3)
- 
-
-  def __get_binary_image(self, gray):
-  blur = cv2.GaussianBlur(gray, (7, 7), 0)
-  ret2, th2 = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-  blur2 = cv2.medianBlur(th2, 5)
-  ret3, th3 = cv2.threshold(blur2, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-  return cv2.bitwise_not(th3)
