@@ -95,7 +95,7 @@ class FakeBrailleCharacter:
 
 # --- Segmentation ---
 def custom_segmentation(image):
-    print( Running custom segmentation...")
+    print("Running custom segmentation...")
 
     img = image.get_original_image()
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
