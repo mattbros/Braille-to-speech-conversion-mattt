@@ -22,7 +22,7 @@ def get_distance(p1, p2):
 def get_dot_nearest(dots, diameter, pt1):
     nearest = None
     min_dist = float('inf')
-    tolerance = (diameter * 1.5) ** 2  # tolerance was 1.25, changed for more robustness
+    tolerance = (diameter * 1.5) ** 2
     for dot in dots:
         dist = get_distance(dot[0], pt1)
         if dist <= tolerance and dist < min_dist:
@@ -36,10 +36,6 @@ def get_combination(box, dots, diameter):
     result = [0, 0, 0, 0, 0, 0]
     left, right, top, bottom = box
     midpointY = (bottom - top) // 2
-    end = (right, midpointY)
-    start = (left, midpointY)
-    width = right - left
-
     corners = {
         (left, top): 1,
         (left, top + midpointY): 2,
@@ -49,25 +45,19 @@ def get_combination(box, dots, diameter):
         (right, bottom): 6
     }
 
-    local_dots = list(dots)  # Don't mutate original
+    local_dots = list(dots)
     for corner, pos in corners.items():
         if global_img_debug is not None:
             cv2.circle(global_img_debug, corner, 6, (0, 0, 255), -1)
 
-        print(f"👉 Checking corner: {corner}, assigned pos {pos}")
         D = get_dot_nearest(local_dots, diameter, corner)
         if D is not None:
-            print(f"✅ Found dot near {corner}: {D}")
             local_dots.remove(D)
             result[pos - 1] = 1
-        else:
-            print(f"❌ No dot near {corner}")
         if not local_dots:
-            print("🚫 No more dots left to match.")
             break
 
-    print("🧪 Final result array (dot combo):", result, "| Types:", [type(v) for v in result])
-    return end, start, width, tuple(result)
+    return (right, midpointY), (left, midpointY), right - left, tuple(result)
 
 @app.route('/')
 def index():
@@ -94,7 +84,11 @@ def capture():
         from OBR import BrailleImage, BrailleClassifier, SegmentationEngine
         global global_img_debug
 
-        img = BrailleImage(image_path)
+        try:
+            img = BrailleImage(image_path)
+        except Exception as e:
+            return jsonify({"error": True, "message": f"Image processing error: {str(e)}"}), 500
+
         global_img_debug = img.get_original_image().copy()
         segmentation_engine = SegmentationEngine(img)
         classifier = BrailleClassifier()
@@ -105,12 +99,7 @@ def capture():
             dot_coords = char.get_dot_coordinates()
             dot_diameter = char.get_dot_diameter()
 
-            print(f"Bounding Box: {bbox}")
-            print(f"Dot Coordinates: {dot_coords}")
-            print(f"Dot Diameter: {dot_diameter}")
-
             end, start, width, combo = get_combination(bbox, dot_coords, dot_diameter)
-            print(f"Combination: {combo}")
             classifier.push(char)
 
         os.unlink(image_path)
@@ -147,7 +136,11 @@ def upload():
         from OBR import BrailleImage, BrailleClassifier, SegmentationEngine
         global global_img_debug
 
-        img = BrailleImage(image_path)
+        try:
+            img = BrailleImage(image_path)
+        except Exception as e:
+            return jsonify({"error": True, "message": f"Image processing error: {str(e)}"}), 500
+
         global_img_debug = img.get_original_image().copy()
         segmentation_engine = SegmentationEngine(img)
         classifier = BrailleClassifier()
@@ -158,19 +151,12 @@ def upload():
             dot_coords = char.get_dot_coordinates()
             dot_diameter = char.get_dot_diameter()
 
-            print(f"Bounding Box: {bbox}")
-            print(f"Dot Coordinates: {dot_coords}")
-            print(f"Dot Diameter: {dot_diameter}")
-
             end, start, width, combo = get_combination(bbox, dot_coords, dot_diameter)
-            print(f"Combination: {combo}")
             classifier.push(char)
 
         processed_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{filename}-proc.png")
         cv2.imwrite(processed_path, img.get_final_image())
         os.unlink(image_path)
-
-        print("📝 DIGEST RESULT:", classifier.digest())
 
         return jsonify({
             "error": False,
@@ -196,9 +182,9 @@ def video_feed():
                        b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
     return Response(gen_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
-
 if __name__ == "__main__":
     try:
         app.run(debug=True)
     finally:
         tempdir.cleanup()
+
