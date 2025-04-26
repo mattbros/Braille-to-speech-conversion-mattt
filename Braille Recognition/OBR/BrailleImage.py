@@ -44,31 +44,30 @@ class BrailleImage(object):
         return self.width
 
     def __get_edged_binary_image(self, gray):
-        # First Lvl Blur to Reduce Noise - More aggressive blurring
-        blur = cv2.GaussianBlur(gray, (5, 5), 0)  # Increased kernel size
+        # First Lvl Blur to Reduce Noise - Even more aggressive and adaptive blurring
+        blur = cv2.GaussianBlur(gray, (7, 7), 0)  # Further increased kernel size
 
-        # Adaptive Thresholding to define the dots in Braille - Adjusted parameters
+        # Adaptive Thresholding to define the dots in Braille - More adaptive parameters
         thres = cv2.adaptiveThreshold(
             blur, 255,
-            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,  # Changed to GAUSSIAN
+            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
             cv2.THRESH_BINARY,
-            15,  # Increased block size
-            -2 # Slightly negative C
+            19,  # Increased block size even more
+            -3  # Slightly more negative C
         )
         # Remove more Noise from the edges.
-        blur2 = cv2.medianBlur(thres, 3)
+        blur2 = cv2.medianBlur(thres, 5) # Increased median blur
         # Sharpen again.
         ret2, th2 = cv2.threshold(blur2, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         # Remove more Noise.
-        blur3 = cv2.GaussianBlur(th2, (3, 3), 0)
+        blur3 = cv2.GaussianBlur(th2, (5, 5), 0)
         # Final threshold
         ret3, th3 = cv2.threshold(blur3, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         return cv2.bitwise_not(th3)
 
     def __get_binary_image(self, gray):
-        blur = cv2.GaussianBlur(gray, (5, 5), 0) # Increased kernel size
+        blur = cv2.GaussianBlur(gray, (7, 7), 0)  # Increased kernel size
         ret2, th2 = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        blur2 = cv2.medianBlur(th2, 3)
+        blur2 = cv2.medianBlur(th2, 5) # Increased median blur
         ret3, th3 = cv2.threshold(blur2, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         return cv2.bitwise_not(th3)
-
