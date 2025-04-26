@@ -1,4 +1,4 @@
-import io
+import sys
 import os
 from flask import Flask, request, jsonify, send_file, render_template, Response
 from werkzeug.utils import secure_filename
@@ -7,6 +7,9 @@ import numpy as np
 from PIL import Image
 import uuid
 import tempfile
+
+# Add the OBR directory to the Python path
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'OBR'))
 
 # Import the other modules
 from BrailleImage import BrailleImage
@@ -278,8 +281,6 @@ def upload():
         except Exception as e:
             os.unlink(image_path)  # Clean up the image file
             return jsonify({"error": True, "message": f"Error processing image: {str(e)}"}), 500
-    else:
-        return jsonify({"error": True, "message": "Invalid file format"}), 400
 
 
 @app.route('/video_feed')
@@ -315,4 +316,5 @@ if __name__ == "__main__":
         app.run(debug=True, host='0.0.0.0', port=5000)
     finally:
         tempdir.cleanup()
+
 
