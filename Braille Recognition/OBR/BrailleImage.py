@@ -8,37 +8,44 @@ class BrailleImage(object):
         if self.original is None:
             raise IOError('Cannot open given image')
 
-        self.correct_perspective()
-        self.rescale_to_target_dot_size(target_size=30)
-        self.apply_clahe()
+        self.correct_perspective()  # <<< Perspective correction step added here
 
+        # First Layer, Convert BGR(Blue Green Red Scale) to Gray Scale
         gray = cv2.cvtColor(self.original, cv2.COLOR_BGR2GRAY)
+
+        # Save the binary image of the edge detected
         self.edged_binary_image = self.__get_edged_binary_image(gray)
+
+        # Save a binary image to get the contents inside the edges
         self.binary_image = self.__get_binary_image(gray)
 
         self.final = self.original.copy()
         self.height, self.width, self.channels = self.original.shape
+        return
 
     def correct_perspective(self):
+        """Auto-correct the perspective tilt of the Braille image."""
         gray = cv2.cvtColor(self.original, cv2.COLOR_BGR2GRAY)
-        blur = cv2.GaussianBlur(gray, (5, 5), 0)
+        blur = cv2.GaussianBlur(gray, (5,5), 0)
         edged = cv2.Canny(blur, 50, 200)
 
         contours, _ = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         if not contours:
-            return
+            return  # No contours found; skip correction
 
         c = max(contours, key=cv2.contourArea)
+
         peri = cv2.arcLength(c, True)
         approx = cv2.approxPolyDP(c, 0.02 * peri, True)
 
         if len(approx) != 4:
-            return
+            return  # Not a quadrilateral; skip correction
 
         pts = approx.reshape(4, 2)
         rect = self.__order_points(pts)
 
         (tl, tr, br, bl) = rect
+
         widthA = np.linalg.norm(br - bl)
         widthB = np.linalg.norm(tr - tl)
         maxWidth = max(int(widthA), int(widthB))
@@ -60,48 +67,10 @@ class BrailleImage(object):
         self.original = warped
         self.height, self.width, self.channels = warped.shape
 
-    def rescale_to_target_dot_size(self, target_size=30):
-        gray = cv2.cvtColor(self.original, cv2.COLOR_BGR2GRAY)
-        blur = cv2.GaussianBlur(gray, (5, 5), 0)
-        edged = cv2.Canny(blur, 50, 200)
-
-        contours, _ = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        if not contours:
-            return
-
-        radii = []
-        for contour in contours:
-            (_, _), radius = cv2.minEnclosingCircle(contour)
-            radii.append(radius)
-
-        if not radii:
-            return
-
-        avg_radius = np.mean(radii)
-        if avg_radius == 0:
-            return
-
-        current_diameter = 2 * avg_radius
-        scale_factor = target_size / current_diameter
-
-        new_w = int(self.original.shape[1] * scale_factor)
-        new_h = int(self.original.shape[0] * scale_factor)
-        self.original = cv2.resize(self.original, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
-
-        self.height, self.width, self.channels = self.original.shape
-
-    def apply_clahe(self):
-        lab = cv2.cvtColor(self.original, cv2.COLOR_BGR2LAB)
-        l, a, b = cv2.split(lab)
-
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-        cl = clahe.apply(l)
-
-        merged = cv2.merge((cl, a, b))
-        self.original = cv2.cvtColor(merged, cv2.COLOR_LAB2BGR)
-
     def __order_points(self, pts):
+        """Helper to consistently order corner points."""
         rect = np.zeros((4, 2), dtype="float32")
+
         s = pts.sum(axis=1)
         rect[0] = pts[np.argmin(s)]  # Top-left
         rect[2] = pts[np.argmax(s)]  # Bottom-right
@@ -135,14 +104,18 @@ class BrailleImage(object):
         return self.width
 
     def __get_edged_binary_image(self, gray):
+        # First Lvl Blur to Reduce Noise - Even more aggressive and adaptive blurring
         blur = cv2.GaussianBlur(gray, (7, 7), 0)
+
+        # Adaptive Thresholding to define the dots in Braille - More adaptive parameters
         thres = cv2.adaptiveThreshold(
             blur, 255,
             cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
             cv2.THRESH_BINARY,
-            19,
-            -3
+            19,  # Increased block size even more
+            -3   # Slightly more negative C
         )
+
         blur2 = cv2.medianBlur(thres, 5)
         ret2, th2 = cv2.threshold(blur2, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         blur3 = cv2.GaussianBlur(th2, (5, 5), 0)
