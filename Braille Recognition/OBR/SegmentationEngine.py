@@ -13,7 +13,7 @@ class SegmentationEngine(object):
         self.radius = 0.0
         self.next_epoch = 0
         self.characters = []
-        return;
+        return
 
     def __iter__(self):
         return self
@@ -26,7 +26,6 @@ class SegmentationEngine(object):
             self.initialized = True
             contours = self.__process_contours()
             if len(contours) == 0:
-                # Since we have no dots.
                 self.__clear()
                 raise StopIteration()
             enclosingCircles = self.__get_min_enclosing_circles(contours)
@@ -34,7 +33,7 @@ class SegmentationEngine(object):
                 self.__clear()
                 raise StopIteration()
 
-            diameter,dots,radius = self.__get_valid_dots(enclosingCircles)
+            diameter, dots, radius = self.__get_valid_dots(enclosingCircles)
             if len(dots) == 0:
                 self.__clear()
                 raise StopIteration()
@@ -49,29 +48,28 @@ class SegmentationEngine(object):
             del self.characters[0]
             return r
 
-        cor = self.__get_row_cor(self.dots, epoch=self.next_epoch) # do not respect breakpoints
+        cor = self.__get_row_cor(self.dots, epoch=self.next_epoch)
         if cor is None:
             self.__clear()
             raise StopIteration()
 
-        top = int(cor[1] - int(self.radius*1.5)) # y coordinate
+        top = int(cor[1] - int(self.radius * 1.5))
         self.next_epoch = int(cor[1] + self.radius)
 
-        cor = self.__get_row_cor(self.dots,self.next_epoch,self.diameter,True)
+        cor = self.__get_row_cor(self.dots, self.next_epoch, self.diameter, True)
         if cor is None:
-            # Assume next epoch
-            self.next_epoch = int(self.next_epoch + (2*self.diameter))
+            self.next_epoch = int(self.next_epoch + (2 * self.diameter))
         else:
             self.next_epoch = int(cor[1] + self.radius)
 
-        cor = self.__get_row_cor(self.dots,self.next_epoch,self.diameter,True)
+        cor = self.__get_row_cor(self.dots, self.next_epoch, self.diameter, True)
         if cor is None:
-            self.next_epoch = int(self.next_epoch + (2*self.diameter))
+            self.next_epoch = int(self.next_epoch + (2 * self.diameter))
         else:
             self.next_epoch = int(cor[1] + self.radius)
-        
+
         bottom = self.next_epoch
-        self.next_epoch += int(2*self.diameter)
+        self.next_epoch += int(2 * self.diameter)
 
         DOI = self.__get_dots_from_region(self.dots, top, bottom)
         xnextEpoch = 0
@@ -80,12 +78,11 @@ class SegmentationEngine(object):
             if xcor is None:
                 break
 
-            left = int(xcor[0] - self.radius) # x coordinate
+            left = int(xcor[0] - self.radius)
             xnextEpoch = int(xcor[0] + self.radius)
-            xcor = self.__get_col_cor(DOI,xnextEpoch,self.diameter,True)
+            xcor = self.__get_col_cor(DOI, xnextEpoch, self.diameter, True)
             if xcor is None:
-                # Assumed
-                xnextEpoch += int(self.diameter*1.5)
+                xnextEpoch += int(self.diameter * 1.5)
             else:
                 xnextEpoch = int(xcor[0]) + int(self.radius)
             right = xnextEpoch
@@ -120,64 +117,48 @@ class SegmentationEngine(object):
         self.image = image
         return True
 
-    def __get_row_cor(self, dots, epoch = 0, diameter = 0, respectBreakpoint = False):
+    def __get_row_cor(self, dots, epoch=0, diameter=0, respectBreakpoint=False):
         if len(dots) == 0:
             return None
         minDot = None
         for dot in dots:
-            x,y = dot[0]
+            x, y = dot[0]
             if y < epoch:
                 continue
-
-            if minDot is None:
+            if minDot is None or (y - epoch) < (minDot[0][1] - epoch):
                 minDot = dot
-            else:
-                v = int(y - epoch)
-                minV = int(minDot[0][1] - epoch)
-                if minV > v:
-                    minDot = dot
-                else:
-                    continue
         if minDot is None:
             return None
         if respectBreakpoint:
             v = int(minDot[0][1] - epoch)
-            if v > (2*diameter):
-                return None # indicates that the entire row is not set
-        return minDot[0] # (X,Y)
+            if v > (2 * diameter):
+                return None
+        return minDot[0]
 
-    def __get_col_cor(self, dots, epoch = 0, diameter = 0, respectBreakpoint = False):
+    def __get_col_cor(self, dots, epoch=0, diameter=0, respectBreakpoint=False):
         if len(dots) == 0:
             return None
         minDot = None
         for dot in dots:
-            x,y = dot[0]
+            x, y = dot[0]
             if x < epoch:
                 continue
-
-            if minDot is None:
+            if minDot is None or (x - epoch) < (minDot[0][0] - epoch):
                 minDot = dot
-            else:
-                v = int(x - epoch)
-                minV = int(minDot[0][0] - epoch)
-                if minV > v:
-                    minDot = dot
-                else:
-                    continue
         if minDot is None:
             return None
         if respectBreakpoint:
             v = int(minDot[0][0] - epoch)
-            if v > (2*diameter):
-                return None # indicates that the entire row is not set
-        return minDot[0] # (X,Y)
+            if v > (2 * diameter):
+                return None
+        return minDot[0]
 
     def __get_dots_from_box(self, dots, box):
-        left,right,top,bottom = box
+        left, right, top, bottom = box
         result = []
         for dot in dots:
-            x,y = dot[0]
-            if x >= left and x <= right and y >= top and y <= bottom:
+            x, y = dot[0]
+            if left <= x <= right and top <= y <= bottom:
                 result.append(dot)
         return result
 
@@ -185,75 +166,71 @@ class SegmentationEngine(object):
         D = []
         if y2 < y1:
             return D
-
         for dot in dots:
-            x,y = dot[0]
-            if y > y1 and y < y2:
+            x, y = dot[0]
+            if y1 < y < y2:
                 D.append(dot)
         return D
 
     def __get_valid_dots(self, circles):
-        tolerance = 0.45
-        radii = []
+        radii = [circle[1] for circle in circles]
+        if not radii:
+            return 0, [], 0
+
+        avg_radius = np.mean(radii)
+        std_dev = np.std(radii)
+
+        dynamic_tolerance = 0.45 + (std_dev / avg_radius)
+        dynamic_tolerance = min(max(dynamic_tolerance, 0.4), 0.6)
+
         consider = []
         bin_img = self.image.get_binary_image()
+
         for circle in circles:
-            x,y = circle[0]
+            x, y = circle[0]
             rad = circle[1]
-            # OpenCV uses row major
-            # Since we do a bitwise not, white pixels belong to the dot.
-            
-            # Go through the x axis and check if all those are white
-            # pixels till you reach the rad
             it = 0
             while it < int(rad):
-                if bin_img[y,x+it] > 0 and bin_img[y+it,x] > 0:
+                if x+it >= bin_img.shape[1] or y+it >= bin_img.shape[0]:
+                    break
+                if bin_img[y, x+it] > 0 and bin_img[y+it, x] > 0:
                     it += 1
                 else:
                     break
             else:
-                if bin_img[y,x] > 0:
+                if bin_img[y, x] > 0:
                     consider.append(circle)
-                    radii.append(rad)
 
-        baserad = Counter(radii).most_common(1)[0][0]
         dots = []
         for circle in consider:
-            x,y = circle[0]
+            x, y = circle[0]
             rad = circle[1]
-            if rad <= int(baserad * (1+tolerance)) and rad >= int(baserad * (1-tolerance)):
+            if avg_radius * (1 - dynamic_tolerance) <= rad <= avg_radius * (1 + dynamic_tolerance):
                 dots.append(circle)
 
-        # Remove duplicate enclosing circles
-        # (i.e) Remove circle enclosed by another other circle.
+        unique_dots = []
         for dot in dots:
-            X1,Y1 = dot[0]
-            C1 = dot[1]
-            for sdot in dots:
-                if dot == sdot:
-                    continue
-                X2,Y2 = sdot[0]
-                C2 = sdot[1]
-                D = sqrt(((X2 - X1)**2) + ((Y2-Y1)**2))
-                if C1 > (D + C2):
-                    dots.remove(sdot)
-        
-        # Filtered base radius
-        radii = []
-        for dot in dots:
-            rad = dot[1]
-            radii.append(rad)
-        baserad = Counter(radii).most_common(1)[0][0] 
-        return 2*(baserad), dots, baserad
-            
+            duplicate = False
+            for sdot in unique_dots:
+                if sqrt((dot[0][0] - sdot[0][0])**2 + (dot[0][1] - sdot[0][1])**2) < (dot[1] + sdot[1]):
+                    duplicate = True
+                    break
+            if not duplicate:
+                unique_dots.append(dot)
+
+        if not unique_dots:
+            return 0, [], 0
+
+        filtered_radii = [dot[1] for dot in unique_dots]
+        base_radius = Counter(filtered_radii).most_common(1)[0][0]
+        return 2 * base_radius, unique_dots, base_radius
+
     def __get_min_enclosing_circles(self, contours):
         circles = []
-        radii = []
         for contour in contours:
-            (x,y), radius = cv2.minEnclosingCircle(contour)
+            (x, y), radius = cv2.minEnclosingCircle(contour)
             center = (int(x), int(y))
             radius = int(radius)
-            radii.append(radius)
             circles.append((center, radius))
         return circles
 
@@ -265,3 +242,4 @@ class SegmentationEngine(object):
         else:
             contours = contours[1]
         return contours
+
