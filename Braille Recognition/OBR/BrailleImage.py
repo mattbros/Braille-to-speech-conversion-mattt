@@ -46,7 +46,7 @@ class BrailleImage(object):
     def __get_edged_binary_image(self, gray):
         # First Lvl Blur to Reduce Noise - Even more aggressive and adaptive blurring
         blur = cv2.GaussianBlur(gray, (7, 7), 0)  # Further increased kernel size
-
+        
         # Adaptive Thresholding to define the dots in Braille - More adaptive parameters
         thres = cv2.adaptiveThreshold(
             blur, 255,
