@@ -19,18 +19,14 @@ class BrailleImage(object):
         self.height, self.width, self.channels = self.original.shape
 
     def preprocess_image(self, image):
-        """Applies preprocessing steps to improve Braille dot detection."""
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-        # Apply CLAHE (Contrast Limited Adaptive Histogram Equalization)
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
         gray = clahe.apply(gray)
 
-        # Noise reduction
         blur = cv2.GaussianBlur(gray, (5, 5), 0)
         median = cv2.medianBlur(blur, 5)
 
-        # Adaptive thresholding
         thresh = cv2.adaptiveThreshold(
             median,
             255,
@@ -40,7 +36,6 @@ class BrailleImage(object):
             2,
         )
 
-        # Morphological operations
         kernel = np.ones((3, 3), np.uint8)
         opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=2)
         closing = cv2.morphologyEx(opening, cv2.MORPH_CLOSE, kernel, iterations=2)
@@ -48,7 +43,6 @@ class BrailleImage(object):
         return closing
 
     def correct_perspective(self):
-        """Auto-corrects the perspective tilt of the Braille image."""
         gray = cv2.cvtColor(self.original, cv2.COLOR_BGR2GRAY)
         blur = cv2.GaussianBlur(gray, (5, 5), 0)
         edged = cv2.Canny(blur, 50, 200)
@@ -91,16 +85,15 @@ class BrailleImage(object):
         self.height, self.width, self.channels = warped.shape
 
     def __order_points(self, pts):
-        """Helper to consistently order corner points."""
         rect = np.zeros((4, 2), dtype="float32")
 
         s = pts.sum(axis=1)
-        rect[0] = pts[np.argmin(s)]  # Top-left
-        rect[2] = pts[np.argmax(s)]  # Bottom-right
+        rect[0] = pts[np.argmin(s)]
+        rect[2] = pts[np.argmax(s)]
 
         diff = np.diff(pts, axis=1)
-        rect[1] = pts[np.argmin(diff)]  # Top-right
-        rect[3] = pts[np.argmax(diff)]  # Bottom-left
+        rect[1] = pts[np.argmin(diff)]
+        rect[3] = pts[np.argmax(diff)]
 
         return rect
 
@@ -137,15 +130,15 @@ class BrailleImage(object):
             -3
         )
         blur2 = cv2.medianBlur(thres, 5)
-        ret2, th2 = cv2.threshold(blur2, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        _, th2 = cv2.threshold(blur2, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         blur3 = cv2.GaussianBlur(th2, (5, 5), 0)
-        ret3, th3 = cv2.threshold(blur3, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        _, th3 = cv2.threshold(blur3, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         return cv2.bitwise_not(th3)
 
     def __get_binary_image(self, gray):
         blur = cv2.GaussianBlur(gray, (7, 7), 0)
-        ret2, th2 = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        _, th2 = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         blur2 = cv2.medianBlur(th2, 5)
-        ret3, th3 = cv2.threshold(blur2, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        _, th3 = cv2.threshold(blur2, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         return cv2.bitwise_not(th3)
 
