@@ -16,6 +16,7 @@ from BrailleImage import BrailleImage
 from BrailleClassifier import BrailleClassifier
 from SegmentationEngine import SegmentationEngine
 from BrailleCharacter import BrailleCharacter  # Import the BrailleCharacter class
+from utils import get_combination, get_distance # Import utility functions
 
 app = Flask(__name__)
 tempdir = tempfile.TemporaryDirectory()
@@ -26,111 +27,59 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 global_img_debug = None
 
 
-# --- Utility Functions ---
-def get_distance(p1, p2):
-    return (p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2
+# --- Utility Functions ---  # REMOVE THESE FUNCTIONS FROM HERE
+# def get_distance(p1, p2):
+#     return (p1[0] - p2[0])**2 + (p1[1] - p2[1])**2
 
+# def get_dot_nearest(dots, diameter, pt1):
+#     nearest = None
+#     min_dist = float('inf')
+#     tolerance = (diameter * 1.5) ** 2  # tolerance was 1.25, changed for more robustness
+#     for dot in dots:
+#         dist = get_distance(dot[0], pt1)
+#         if dist <= tolerance and dist < min_dist:
+#             nearest = dot
+#             min_dist = dist
+#     return nearest
 
-def get_dot_nearest(dots, diameter, pt1):
-    nearest = None
-    min_dist = float('inf')
-    tolerance = (diameter * 1.5) ** 2  # tolerance was 1.25, changed for more robustness
-    for dot in dots:
-        dist = get_distance(dot[0], pt1)
-        if dist <= tolerance and dist < min_dist:
-            nearest = dot
-            min_dist = dist
-    return nearest
+# def get_combination(box, dots, diameter):
+#     global global_img_debug
 
+#     result = [0, 0, 0, 0, 0, 0]
+#     left, right, top, bottom = box
+#     midpointY = (bottom - top) // 2
+#     end = (right, midpointY)
+#     start = (left, midpointY)
+#     width = right - left
 
-def get_combination(box, dots, diameter):
-    global global_img_debug
+#     corners = {
+#         (left, top): 1,
+#         (left, top + midpointY): 2,
+#         (left, bottom): 3,
+#         (right, top): 4,
+#         (right, top + midpointY): 5,
+#         (right, bottom): 6
+#     }
 
-    result = [0, 0, 0, 0, 0, 0]
-    left, right, top, bottom = box
-    midpointY = (bottom - top) // 2
-    end = (right, midpointY)
-    start = (left, midpointY)
-    width = right - left
+#     local_dots = list(dots)  # Don't mutate original
+#     for corner, pos in corners.items():
+#         if global_img_debug is not None:
+#             cv2.circle(global_img_debug, corner, 6, (0, 0, 255), -1)
 
-    corners = {
-        (left, top): 1,
-        (left, top + midpointY): 2,
-        (left, bottom): 3,
-        (right, top): 4,
-        (right, top + midpointY): 5,
-        (right, bottom): 6
-    }
+#         print(f"👉 Checking corner: {corner}, assigned pos {pos}")
+#         D = get_dot_nearest(local_dots, diameter, corner)
+#         if D is not None:
+#             print(f"✅ Found dot near {corner}: {D}")
+#             local_dots.remove(D)
+#             result[pos - 1] = 1
+#         else:
+#             print(f"❌ No dot near {corner}")
+#         if not local_dots:
+#             print("🚫 No more dots left to match.")
+#             break
 
-    local_dots = list(dots)  # Don't mutate original
-    for corner, pos in corners.items():
-        if global_img_debug is not None:
-            cv2.circle(global_img_debug, corner, 6, (0, 0, 255), -1)
-
-        print(f"👉 Checking corner: {corner}, assigned pos {pos}")
-        D = get_dot_nearest(local_dots, diameter, corner)
-        if D is not None:
-            print(f"✅ Found dot near {corner}: {D}")
-            local_dots.remove(D)
-            result[pos - 1] = 1
-        else:
-            print(f"❌ No dot near {corner}")
-        if not local_dots:
-            print("🚫 No more dots left to match.")
-            break
-
-    print("🧪 Final result array (dot combo):", result, "| Types:", [type(v) for v in result])
-    return end, start, width, tuple(result)
-
-
-def allowed_file(filename):
-    """Check if the file extension is allowed."""
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-
-def process_image(file):
-    """
-    Process the uploaded image to extract Braille characters.
-
-    Args:
-        file: The file object from the Flask request.
-
-    Returns:
-        list: A list of BrailleCharacter objects, or an error message.
-    """
-    try:
-        # Read the image data from the file object
-        filestr = file.read()
-        # convert to numpy array
-        file_bytes = np.frombuffer(filestr, np.uint8)
-        # decode image
-        img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
-
-        # Create a BrailleImage object
-        braille_image = BrailleImage(image=img)
-
-        # Initialize the segmentation engine
-        segmentation_engine = SegmentationEngine(braille_image)
-
-        # Get the segmented Braille characters
-        segmented_characters = segmentation_engine.get_segmented_characters()
-
-        # Initialize the Braille classifier
-        braille_classifier = BrailleClassifier()
-
-        # Classify the characters and get the Braille text
-        braille_text = ""
-        recognized_characters = []  # To store BrailleCharacter objects with recognized letters
-        for character in segmented_characters:
-            letter = braille_classifier.classify(character)
-            braille_text += letter
-            character.set_letter(letter)  # set the letter for each BrailleCharacter object
-            recognized_characters.append(character)  # Add to the list
-        return recognized_characters
-
-    except Exception as e:
-        return str(e)  # Return the error message as a string
-
+#     print("🧪 Final result array (dot combo):", result, "| Types:", [type(v) for v in result])
+#     return end, start, width, tuple(result)
 
 @app.route('/')
 def index():
@@ -316,5 +265,6 @@ if __name__ == "__main__":
         app.run(debug=True, host='0.0.0.0', port=5000)
     finally:
         tempdir.cleanup()
+
 
 
