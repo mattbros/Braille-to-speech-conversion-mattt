@@ -71,6 +71,9 @@ class BrailleImage(object):
         heightB = np.linalg.norm(tl - bl)
         maxHeight = max(int(heightA), int(heightB))
 
+        if maxWidth <= 0 or maxHeight <= 0:
+            return
+
         dst = np.array([
             [0, 0],
             [maxWidth - 1, 0],
