@@ -16,7 +16,9 @@ class BrailleImage(object):
         self.binary_image = self.__get_binary_image(gray)
 
         self.final = self.original.copy()
-        self.height, self.width, self.channels = self.original.shape
+        shape = self.original.shape
+        self.height, self.width = shape[0], shape[1]
+        self.channels = shape[2] if len(shape) == 3 else 1
 
     def to_gray(self, image):
         if len(image.shape) == 3 and image.shape[2] == 3:
@@ -92,7 +94,9 @@ class BrailleImage(object):
         warped = cv2.warpPerspective(self.original, M, (maxWidth, maxHeight))
 
         self.original = warped
-        self.height, self.width, self.channels = warped.shape
+        shape = warped.shape
+        self.height, self.width = shape[0], shape[1]
+        self.channels = shape[2] if len(shape) == 3 else 1
 
     def __order_points(self, pts):
         rect = np.zeros((4, 2), dtype="float32")
@@ -151,3 +155,4 @@ class BrailleImage(object):
         blur2 = cv2.medianBlur(th2, 5)
         _, th3 = cv2.threshold(blur2, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         return cv2.bitwise_not(th3)
+
