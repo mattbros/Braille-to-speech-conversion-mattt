@@ -13,7 +13,7 @@ class SegmentationEngine(object):
         self.radius = 0.0
         self.next_epoch = 0
         self.characters = []
-        return;
+        return
 
     def __iter__(self):
         return self
@@ -194,66 +194,59 @@ class SegmentationEngine(object):
 
     def __get_valid_dots(self, circles):
         tolerance = 0.45
-        radii = []
-        consider = []
-        bin_img = self.image.get_binary_image()
-        for circle in circles:
-            x,y = circle[0]
-            rad = circle[1]
-            # OpenCV uses row major
-            # Since we do a bitwise not, white pixels belong to the dot.
-            
-            # Go through the x axis and check if all those are white
-            # pixels till you reach the rad
-            it = 0
-            while it < int(rad):
-                if bin_img[y,x+it] > 0 and bin_img[y+it,x] > 0:
-                    it += 1
-                else:
-                    break
-            else:
-                if bin_img[y,x] > 0:
-                    consider.append(circle)
-                    radii.append(rad)
-
-        baserad = Counter(radii).most_common(1)[0][0]
         dots = []
-        for circle in consider:
-            x,y = circle[0]
-            rad = circle[1]
-            if rad <= int(baserad * (1+tolerance)) and rad >= int(baserad * (1-tolerance)):
-                dots.append(circle)
-
-        # Remove duplicate enclosing circles
-        # (i.e) Remove circle enclosed by another other circle.
-        for dot in dots:
-            X1,Y1 = dot[0]
-            C1 = dot[1]
-            for sdot in dots:
-                if dot == sdot:
-                    continue
-                X2,Y2 = sdot[0]
-                C2 = sdot[1]
-                D = sqrt(((X2 - X1)**2) + ((Y2-Y1)**2))
-                if C1 > (D + C2):
-                    dots.remove(sdot)
+        local_radii = []  # Store radii for each region
+        image_height = self.image.get_height()
+        image_width = self.image.get_width()
+        num_regions_y = 3  # Divide image vertically into 3 regions (adjust as needed)
+        region_height = image_height // num_regions_y
+        min_dist_between_dots = 0.7 #tune
         
-        # Filtered base radius
-        radii = []
-        for dot in dots:
-            rad = dot[1]
-            radii.append(rad)
-        baserad = Counter(radii).most_common(1)[0][0] 
-        return 2*(baserad), dots, baserad
+        for i in range(num_regions_y):
+            y_start = i * region_height
+            y_end = (i + 1) * region_height
+            region_circles = [
+                c for c in circles if y_start <= c[0][1] < y_end
+            ]  # Circles in this region
             
+            region_radii = [c[1] for c in region_circles]
+            if region_radii:
+                local_baserad = Counter(region_radii).most_common(1)[0][0]
+            else:
+                local_baserad = 0
+            
+            for circle in region_circles:
+                x, y = circle[0]
+                rad = circle[1]
+                if local_baserad > 0 and rad <= int(local_baserad * (1 + tolerance)) and rad >= int(local_baserad * (1 - tolerance)):
+                    dots.append(circle)
+                    local_radii.append(rad)  # Store the radius used for filtering
+        
+        if local_radii:
+            baserad = Counter(local_radii).most_common(1)[0][0] # Overall radius
+        else:
+            baserad = 0
+        
+        valid_dots = []
+        if baserad > 0:
+            for dot in dots:
+                is_duplicate = False
+                for existing_dot in valid_dots:
+                    dist = sqrt(((dot[0][0] - existing_dot[0][0]) ** 2) + ((dot[0][1] - existing_dot[0][1]) ** 2))
+                    if dist < min_dist_between_dots * baserad:
+                        is_duplicate = True
+                        break
+                if not is_duplicate:
+                    valid_dots.append(dot)
+        
+        return 2 * (baserad), valid_dots, baserad
+
     def __get_min_enclosing_circles(self, contours):
         circles = []
-        radii = []
         for contour in contours:
             (x,y), radius = cv2.minEnclosingCircle(contour)
             center = (int(x), int(y))
             radius = int(radius)
-            radii.append(radius)
             circles.append((center, radius))
         return circles
 
