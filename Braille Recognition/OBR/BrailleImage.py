@@ -10,7 +10,7 @@ class BrailleImage(object):
         self.correct_perspective()
         self.original = self.preprocess_image(self.original)
 
-        gray = cv2.cvtColor(self.original, cv2.COLOR_BGR2GRAY)
+        gray = self.to_gray(self.original)
 
         self.edged_binary_image = self.__get_edged_binary_image(gray)
         self.binary_image = self.__get_binary_image(gray)
@@ -18,8 +18,14 @@ class BrailleImage(object):
         self.final = self.original.copy()
         self.height, self.width, self.channels = self.original.shape
 
+    def to_gray(self, image):
+        if len(image.shape) == 3 and image.shape[2] == 3:
+            return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        else:
+            return image.copy()
+
     def preprocess_image(self, image):
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        gray = self.to_gray(image)
 
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
         gray = clahe.apply(gray)
@@ -43,7 +49,8 @@ class BrailleImage(object):
         return closing
 
     def correct_perspective(self):
-        gray = cv2.cvtColor(self.original, cv2.COLOR_BGR2GRAY)
+        gray = self.to_gray(self.original)
+
         blur = cv2.GaussianBlur(gray, (5, 5), 0)
         edged = cv2.Canny(blur, 50, 200)
 
@@ -144,4 +151,3 @@ class BrailleImage(object):
         blur2 = cv2.medianBlur(th2, 5)
         _, th3 = cv2.threshold(blur2, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         return cv2.bitwise_not(th3)
-
