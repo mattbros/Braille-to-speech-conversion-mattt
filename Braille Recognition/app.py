@@ -7,15 +7,13 @@ from flask import Flask, jsonify, render_template, send_file, redirect, request,
 from werkzeug.utils import secure_filename
 from OBR import SegmentationEngine, BrailleClassifier, BrailleImage
 
-# Shared image for debug drawing in get_combination
-global_img_debug = None
-
 app = Flask("Optical Braille Recognition Demo")
 tempdir = tempfile.TemporaryDirectory()
 app.config['UPLOAD_FOLDER'] = tempdir.name
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
-# --- Utility Functions ---
+global_img_debug = None
+
 def get_distance(p1, p2):
     return (p1[0] - p2[0])**2 + (p1[1] - p2[1])**2
 
@@ -86,21 +84,23 @@ def capture():
 
         try:
             img = BrailleImage(image_path)
+            segmentation_engine = SegmentationEngine(img)
         except Exception as e:
             return jsonify({"error": True, "message": f"Image processing error: {str(e)}"}), 500
 
-        global_img_debug = img.get_original_image().copy()
-        segmentation_engine = SegmentationEngine(img)
         classifier = BrailleClassifier()
+        global_img_debug = img.get_original_image().copy()
 
-        for char in segmentation_engine:
-            char.mark()
-            bbox = char.get_bounding_box()
-            dot_coords = char.get_dot_coordinates()
-            dot_diameter = char.get_dot_diameter()
-
-            end, start, width, combo = get_combination(bbox, dot_coords, dot_diameter)
-            classifier.push(char)
+        try:
+            for char in segmentation_engine:
+                char.mark()
+                bbox = char.get_bounding_box()
+                dot_coords = char.get_dot_coordinates()
+                dot_diameter = char.get_dot_diameter()
+                end, start, width, combo = get_combination(bbox, dot_coords, dot_diameter)
+                classifier.push(char)
+        except Exception as e:
+            return jsonify({"error": True, "message": f"Segmentation error: {str(e)}"}), 500
 
         os.unlink(image_path)
 
@@ -111,61 +111,6 @@ def capture():
         })
 
     return jsonify({"error": True, "message": "Invalid image format"}), 400
-
-@app.route('/procimage/<string:img_id>')
-def proc_image(img_id):
-    image = os.path.join(app.config['UPLOAD_FOLDER'], f"{secure_filename(img_id)}-proc.png")
-    if os.path.exists(image):
-        return send_file(image, mimetype='image/png')
-    return redirect('/coverimage')
-
-@app.route('/digest', methods=['POST'])
-def upload():
-    if 'file' not in request.files:
-        return jsonify({"error": True, "message": "No file part"})
-
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({"error": True, "message": "No selected file"})
-
-    if file and file.filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS:
-        filename = ''.join(str(uuid.uuid4()).split('-'))
-        image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(image_path)
-
-        from OBR import BrailleImage, BrailleClassifier, SegmentationEngine
-        global global_img_debug
-
-        try:
-            img = BrailleImage(image_path)
-        except Exception as e:
-            return jsonify({"error": True, "message": f"Image processing error: {str(e)}"}), 500
-
-        global_img_debug = img.get_original_image().copy()
-        segmentation_engine = SegmentationEngine(img)
-        classifier = BrailleClassifier()
-
-        for char in segmentation_engine:
-            char.mark()
-            bbox = char.get_bounding_box()
-            dot_coords = char.get_dot_coordinates()
-            dot_diameter = char.get_dot_diameter()
-
-            end, start, width, combo = get_combination(bbox, dot_coords, dot_diameter)
-            classifier.push(char)
-
-        processed_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{filename}-proc.png")
-        cv2.imwrite(processed_path, img.get_final_image())
-        os.unlink(image_path)
-
-        return jsonify({
-            "error": False,
-            "message": "Success",
-            "img_id": filename,
-            "digest": classifier.digest()
-        })
-
-    return jsonify({"error": True, "message": "Invalid file format"})
 
 @app.route('/video_feed')
 def video_feed():
