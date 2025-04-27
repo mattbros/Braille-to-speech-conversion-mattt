@@ -8,13 +8,15 @@ class BrailleImage(object):
         if self.original is None:
             raise IOError('Cannot open given image')
 
-        self.correct_perspective()
+        self.correct_perspective()  # <<< Perspective correction step added here
+
+        # First Layer, Convert BGR(Blue Green Red Scale) to Gray Scale
         gray = cv2.cvtColor(self.original, cv2.COLOR_BGR2GRAY)
 
-        # Apply Bilateral Filtering for noise reduction while preserving edges
-        gray = cv2.bilateralFilter(gray, d=9, sigmaColor=75, sigmaSpace=75)
-
+        # Save the binary image of the edge detected
         self.edged_binary_image = self.__get_edged_binary_image(gray)
+
+        # Save a binary image to get the contents inside the edges
         self.binary_image = self.__get_binary_image(gray)
 
         self.final = self.original.copy()
@@ -23,23 +25,36 @@ class BrailleImage(object):
 
     def correct_perspective(self):
         """Auto-correct the perspective tilt of the Braille image."""
-
         gray = cv2.cvtColor(self.original, cv2.COLOR_BGR2GRAY)
         blur = cv2.GaussianBlur(gray, (5, 5), 0)
         edged = cv2.Canny(blur, 50, 200)
 
         contours, _ = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         if not contours:
-            print("Warning: No contours found for perspective correction.")  # Log warning
+            return  # No contours found; skip correction
+
+        # Filter contours by area and shape to find the Braille region.
+        # This is more robust than just taking the largest contour.
+         Braille_contours = []
+        for cnt in contours:
+            area = cv2.contourArea(cnt)
+            perimeter = cv2.arcLength(cnt, True)
+            if perimeter == 0:
+                continue
+            circularity = 4 * np.pi * area / (perimeter * perimeter)
+            if 0.1 < circularity < 0.9 and area > 1000:  #tune these values
+                Braille_contours.append(cnt)
+
+        if not Braille_contours:
             return
 
-        c = max(contours, key=cv2.contourArea)
+        c = max(Braille_contours, key=cv2.contourArea) # gets biggest Braille contour
+
         peri = cv2.arcLength(c, True)
-        approx = cv2.approxPolyDP(c, 0.02 * peri, True)
+        approx = cv2.approxPolyDP(c, 0.02 * peri, True) #0.02
 
         if len(approx) != 4:
-            print(f"Warning: Found {len(approx)} corners, expected 4 for perspective correction.")
-            return
+            return  # Not a quadrilateral; skip correction
 
         pts = approx.reshape(4, 2)
         rect = self.__order_points(pts)
@@ -104,27 +119,28 @@ class BrailleImage(object):
         return self.width
 
     def __get_edged_binary_image(self, gray):
-         # Apply CLAHE for local contrast enhancement
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-        gray_clahe = clahe.apply(gray)
+        # First Lvl Blur to Reduce Noise - Even more aggressive and adaptive blurring
+        blur = cv2.GaussianBlur(gray, (7, 7), 0)
 
-        # Adaptive Thresholding
+        # Adaptive Thresholding to define the dots in Braille - More adaptive parameters
         thres = cv2.adaptiveThreshold(
-            gray_clahe, 255,
+            blur, 255,
             cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
             cv2.THRESH_BINARY,
-            15,  # Adjusted block size
-            -2   # Adjusted C value
+            19,  # Increased block size even more
+            -3   # Slightly more negative C
         )
 
-        blur = cv2.GaussianBlur(thres, (3, 3), 0)  # Reduced blur slightly
-        return cv2.bitwise_not(blur)
+        blur2 = cv2.medianBlur(thres, 5)
+        ret2, th2 = cv2.threshold(blur2, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        blur3 = cv2.GaussianBlur(th2, (5, 5), 0)
+        ret3, th3 = cv2.threshold(blur3, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        return cv2.bitwise_not(th3)
 
     def __get_binary_image(self, gray):
-        # Apply CLAHE here as well, consistent processing
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-        gray_clahe = clahe.apply(gray)
+        blur = cv2.GaussianBlur(gray, (7, 7), 0)
+        ret2, th2 = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        blur2 = cv2.medianBlur(th2, 5)
+        ret3, th3 = cv2.threshold(blur2, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        return cv2.bitwise_not(th3)
 
-        # Simpler thresholding for the general binary image
-        _, thres = cv2.threshold(gray_clahe, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        return cv2.bitwise_not(thres)
