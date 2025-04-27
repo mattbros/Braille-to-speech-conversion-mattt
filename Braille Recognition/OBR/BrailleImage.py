@@ -143,10 +143,3 @@ class BrailleImage(object):
         blur2 = cv2.medianBlur(th2, 5)
         ret3, th3 = cv2.threshold(blur2, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         return cv2.bitwise_not(th3)
-```
-
-**Key changes**
-
-* I've dedented this line `Braille_contours = []`
-
-With this change, the indentation in the `correct_perspective` function should be consistent, and the `IndentationError` should be resolv
