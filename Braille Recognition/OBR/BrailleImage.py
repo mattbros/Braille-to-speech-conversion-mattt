@@ -42,7 +42,7 @@ class BrailleImage(object):
             if perimeter == 0:
                 continue
             circularity = 4 * np.pi * area / (perimeter * perimeter)
-            if 0.1 < circularity < 0.9 and area > 1000:  # tune these values
+            if 0.05 < circularity < 0.95 and area > 800:  # tune these values
                 Braille_contours.append(cnt)
 
         if not Braille_contours:
@@ -51,7 +51,7 @@ class BrailleImage(object):
         c = max(Braille_contours, key=cv2.contourArea)  # gets biggest Braille contour
 
         peri = cv2.arcLength(c, True)
-        approx = cv2.approxPolyDP(c, 0.02 * peri, True)  # 0.02
+        approx = cv2.approxPolyDP(c, 0.01 * peri, True)  # 0.02
 
         if len(approx) != 4:
             return  # Not a quadrilateral; skip correction
@@ -91,7 +91,7 @@ class BrailleImage(object):
         rect[2] = pts[np.argmax(s)]  # Bottom-right
 
         diff = np.diff(pts, axis=1)
-        rect[1] = pts[np.argmin(diff)]
+        rect[1] = pts[np.argmin(diff)]  # Top-right
         rect[3] = pts[np.argmax(diff)]  # Bottom-left
 
         return rect
