@@ -35,23 +35,23 @@ class BrailleImage(object):
 
         # Filter contours by area and shape to find the Braille region.
         # This is more robust than just taking the largest contour.
-         Braille_contours = []
+        Braille_contours = []
         for cnt in contours:
             area = cv2.contourArea(cnt)
             perimeter = cv2.arcLength(cnt, True)
             if perimeter == 0:
                 continue
             circularity = 4 * np.pi * area / (perimeter * perimeter)
-            if 0.1 < circularity < 0.9 and area > 1000:  #tune these values
+            if 0.1 < circularity < 0.9 and area > 1000:  # tune these values
                 Braille_contours.append(cnt)
 
         if not Braille_contours:
             return
 
-        c = max(Braille_contours, key=cv2.contourArea) # gets biggest Braille contour
+        c = max(Braille_contours, key=cv2.contourArea)  # gets biggest Braille contour
 
         peri = cv2.arcLength(c, True)
-        approx = cv2.approxPolyDP(c, 0.02 * peri, True) #0.02
+        approx = cv2.approxPolyDP(c, 0.02 * peri, True)  # 0.02
 
         if len(approx) != 4:
             return  # Not a quadrilateral; skip correction
@@ -91,7 +91,7 @@ class BrailleImage(object):
         rect[2] = pts[np.argmax(s)]  # Bottom-right
 
         diff = np.diff(pts, axis=1)
-        rect[1] = pts[np.argmin(diff)]  # Top-right
+        rect[1] = pts[np.argmin(diff)]
         rect[3] = pts[np.argmax(diff)]  # Bottom-left
 
         return rect
@@ -143,4 +143,10 @@ class BrailleImage(object):
         blur2 = cv2.medianBlur(th2, 5)
         ret3, th3 = cv2.threshold(blur2, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         return cv2.bitwise_not(th3)
+```
 
+**Key changes**
+
+* I've dedented this line `Braille_contours = []`
+
+With this change, the indentation in the `correct_perspective` function should be consistent, and the `IndentationError` should be resolv
