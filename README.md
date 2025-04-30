@@ -6,11 +6,11 @@ This project is an Optical Braille Recognition (OBR) system that aims to recogni
 
 ## Features
 
-* **Image Input:** Accepts images as input.
-* **Perspective Correction:** Corrects perspective distortions in the image.
-* **Dot Segmentation:** Identifies and segments individual Braille dots.
-* **Character Recognition:** Recognizes Braille characters from the dot patterns.
-* **Output:** Provides the recognized Braille text as output.
+* **Image Input**: Accepts images as input from both uploaded files and direct image capture using a webcam.
+* **Perspective Correction**: Corrects perspective distortions in the image.
+* **Dot Segmentation**: Identifies and segments individual Braille dots.
+* **Character Recognition**: Recognizes Braille characters from the dot patterns, including Spanish characters.
+* **Output**: Provides the recognized Braille text as output.
 
 ## Installation
 
@@ -39,7 +39,7 @@ This project is an Optical Braille Recognition (OBR) system that aims to recogni
 
 1.  **Prepare an image:**
 
-    * Take a clear picture of the Braille text.
+    * You can either upload an image from your computer or capture an image directly using a webcam.
     * Ensure the image is well-lit and the Braille text is in focus.
     * Save the image in a common format like JPG or PNG.
 
@@ -51,13 +51,13 @@ This project is an Optical Braille Recognition (OBR) system that aims to recogni
 
 3.  **Use the application:**
 
-    * The application will process the image and output the recognized Braille text. The exact way to provide the image will depend on how you've set up the app (e.g., a command-line argument, a web interface). See the `app.py` file for specific usage details.
+    * The application will process the image and output the recognized Braille text. The exact way to provide the image (upload or capture) will depend on how you've set up the app (e.g., a command-line argument, a web interface). See the `app.py` file for specific usage details.
 
 ## Code Description
 
 Key files and their roles:
 
-* `app.py`: This is the main application file. It handles image input, calls the OBR processing functions, and outputs the recognized text. It likely uses Flask for handling web requests.
+* `app.py`: This is the main application file. It handles image input (upload and capture), calls the OBR processing functions, and outputs the recognized text. It likely uses Flask for handling web requests.
 * `OBR/SegmentationEngine.py`: This file contains the `SegmentationEngine` class, which is responsible for segmenting the Braille dots from the image.
 * `OBR/BrailleImage.py`: This file contains the `BrailleImage` class, which handles image loading, preprocessing (including perspective correction), and provides access to image data.
 * `OBR/BrailleCharacter.py`: This file contains the `BrailleCharacter` class, which represents a single Braille character and its properties (dot coordinates, bounding box, etc.).
@@ -86,6 +86,6 @@ This project is licensed under the **MIT License**.
 ## Acknowledgements
 
 * I'd like to acknowledge the contributions of the open-source community, whose libraries and tools made this project possible. Specifically:
-    * **OpenCV:** The core library for image processing.
-    * **NumPy:** For efficient numerical computation.
-    * **Flask:** (If used) For providing a web framework.
+    * OpenCV: The core library for image processing.
+    * NumPy: For efficient numerical computation.
+    * Flask: (If used) For providing a web framework.
