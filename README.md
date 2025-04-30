@@ -17,8 +17,8 @@ This project is an Optical Braille Recognition (OBR) system that aims to recogni
 1.  **Clone the repository:**
 
     ```bash
-    git clone [https://github.com/your-username/your-repository-name.git](https://github.com/your-username/your-repository-name.git)
-    cd your-repository-name
+    git clone [https://github.com/your-username/BrailleMate-Pro-Braille-to-Text-Speech.git](https://github.com/your-username/BrailleMate-Pro-Braille-to-Text-Speech.git)
+    cd BrailleMate-Pro-Braille-to-Text-Speech
     ```
 
 2.  **Set up a virtual environment (recommended):**
@@ -85,7 +85,7 @@ This project is licensed under the **MIT License**.
 
 ## Acknowledgements
 
-* I'd like to acknowledge the contributions of the open-source community, whose libraries and tools made this project possible.  Specifically:
+* I'd like to acknowledge the contributions of the open-source community, whose libraries and tools made this project possible. Specifically:
     * **OpenCV:** The core library for image processing.
     * **NumPy:** For efficient numerical computation.
     * **Flask:** (If used) For providing a web framework.
