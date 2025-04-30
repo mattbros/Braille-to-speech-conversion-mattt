@@ -151,6 +151,18 @@ class BrailleClassifier(object):
          (1,0,1,1,1,1): Symbol('y',letter=True),
          (1,0,1,0,1,1): Symbol('z',letter=True),
          (0,0,1,1,1,1): Symbol('#',special=True),
+        # Spanish characters - correct mappings.
+         (1, 0, 0, 0, 1, 1): Symbol('á', letter=True),  # a with acute accent
+         (1, 1, 0, 1, 0, 1): Symbol('é', letter=True),  # e with acute accent
+         (0, 1, 1, 0, 1, 0): Symbol('í', letter=True),  # i with acute accent
+         (1, 0, 0, 0, 1, 1): Symbol('ó', letter=True),  # o with acute accent
+         (1, 1, 0, 1, 1, 1): Symbol('ú', letter=True),  # u with acute accent
+         (1, 0, 0, 1, 1, 1): Symbol('ü', letter=True),  # u with dieresis
+         (0, 1, 1, 0, 0, 0): Symbol('ñ', letter=True),  # n with tilde
+         (0, 0, 1, 0, 0, 1): Symbol('¿', special=True), # inverted question mark
+         (0, 0, 0, 0, 0, 0): Symbol('¡', special=True), # inverted exclamation mark
+    }
+
     }
     def __init__(self):
         self.result = ''
